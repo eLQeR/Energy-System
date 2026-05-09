@@ -1,0 +1,57 @@
+# Edge-analyzer (Диплом 3) — для запуску на справжній Raspberry Pi.
+#
+# Pi — окремий хост у мережі. На сервері (інший комп'ютер) працює
+# основний docker-compose.yml з MQTT, InfluxDB, Fuseki, Grafana,
+# ontology_api, alerts_server. На Pi запускається тільки цей файл —
+# один контейнер з analyzer'ом, що ходить до сервера через мережу.
+#
+# ── ОДНОРАЗОВО НА PI ────────────────────────────────────────────────
+#
+#   1. Встанови docker engine + compose плагін:
+#        curl -fsSL https://get.docker.com | sh
+#        sudo usermod -aG docker $USER       # перезайди в shell
+#
+#   2. Скопіюй код проєкту на Pi (через git clone, scp або rsync).
+#
+#   3. Створи .env.pi (поряд з цим файлом) — див. приклад внизу.
+#
+#   4. Збери образ локально на Pi (~10 хв на Pi 4):
+#        docker compose -f docker-compose.pi.yml build
+#
+# ── ЗАПУСК ──────────────────────────────────────────────────────────
+#
+#   docker compose -f docker-compose.pi.yml --env-file .env.pi up -d
+#
+# Перевірити:
+#   docker logs -f pi-analyzer
+#
+# ── ОЧІКУВАНИЙ .env.pi ──────────────────────────────────────────────
+#   DEVICE_ID=ecodan_01
+#   MQTT_BROKER=192.168.1.10           # IP комп'ютера-сервера
+#   MQTT_PORT=1883
+#   ONTOLOGY_API=http://192.168.1.10:5002
+#   ALERTS_API=http://192.168.1.10:5003
+#   REMIND_INTERVAL_SEC=300
+#   ANALYZER_WEB_PORT=5001
+# ────────────────────────────────────────────────────────────────────
+
+services:
+  edge_analyzer:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: lab-python-pi:latest
+    container_name: pi-analyzer
+    hostname: raspberry-pi
+    environment:
+      DEVICE_ID:           ${DEVICE_ID:-ecodan_01}
+      MQTT_BROKER:         ${MQTT_BROKER:?треба IP сервера у .env.pi}
+      MQTT_PORT:           ${MQTT_PORT:-1883}
+      ONTOLOGY_API:        ${ONTOLOGY_API:?треба URL сервера у .env.pi}
+      ALERTS_API:          ${ALERTS_API:?треба URL сервера у .env.pi}
+      REMIND_INTERVAL_SEC: ${REMIND_INTERVAL_SEC:-300}
+    ports:
+      - "${ANALYZER_WEB_PORT:-5001}:5001"   # локальна Web-панель на Pi
+    command: python3 analyzer/edge_analyzer.py
+    restart: unless-stopped
+    network_mode: bridge   # стандартний bridge на Pi, без зв'язки з compose сервера

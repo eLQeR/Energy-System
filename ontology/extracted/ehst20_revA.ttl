@@ -1,0 +1,41 @@
+@prefix lab:  <http://lab.example/ontology#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd:  <http://www.w3.org/2001/XMLSchema#> .
+
+# Source: Mitsubishi installation manual BH79D188H02.pdf (revision A series)
+# Covers cylinder units EHST20C-*M*HA / *M*A / VM6SA and EHPT20X variants.
+
+lab:ehst20_revA a lab:AirToWaterHP ;
+    rdfs:label         "Mitsubishi EcoDan EHST20/EHPT20 (rev. A)" ;
+    lab:manufacturer   "Mitsubishi Electric" ;
+    lab:modelSeries    "EHST20" ;
+    lab:modelSeries    "EHPT20" ;
+    lab:modelVariant   "EHST20C-VM6HA" ;
+    lab:modelVariant   "EHST20C-YM9HA" ;
+    lab:modelVariant   "EHST20C-VM6A" ;
+    lab:modelVariant   "EHST20C-YM9A" ;
+    lab:modelVariant   "EHST20C-VM6SA" ;
+    lab:modelVariant   "EHPT20X-VM2HA" ;
+    lab:modelVariant   "EHPT20X-VM6HA" ;
+    lab:modelVariant   "EHPT20X-YM9HA" ;
+    lab:modelVariant   "EHPT20X-VM6A" ;
+    lab:modelVariant   "EHPT20X-YM9A" ;
+    lab:tankVolumeL    "200.0"^^xsd:float ;
+    lab:maxFlowTempC   "60.0"^^xsd:float ;
+    lab:minFlowTempC   "25.0"^^xsd:float ;
+    lab:refrigerant    "R410A" ;
+    lab:powerSupplyV   "230"^^xsd:integer ;
+    lab:hasOperatingMode lab:heating_mode , lab:dhw_mode , lab:standby_mode ;
+    lab:hasComponent   lab:ehst20_revA_compressor ,
+                       lab:ehst20_revA_evaporator ,
+                       lab:ehst20_revA_condenser ,
+                       lab:ehst20_revA_plate_hex ,
+                       lab:ehst20_revA_booster_heater ,
+                       lab:ehst20_revA_immersion_heater .
+
+lab:ehst20_revA_compressor       a lab:Compressor   ; rdfs:label "Compressor (outdoor unit)" .
+lab:ehst20_revA_evaporator       a lab:Evaporator   ; rdfs:label "Evaporator (outdoor air heat exchanger)" .
+lab:ehst20_revA_condenser        a lab:Condenser    ; rdfs:label "Condenser" .
+lab:ehst20_revA_plate_hex        a lab:Component    ; rdfs:label "Plate heat exchanger" .
+lab:ehst20_revA_booster_heater   a lab:Component    ; rdfs:label "Booster heater (2 kW + 4 kW or 3 kW + 6 kW)" .
+lab:ehst20_revA_immersion_heater a lab:Component    ; rdfs:label "Immersion heater (3 kW)" .

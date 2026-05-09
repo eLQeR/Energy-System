@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% block title %}{{ device_id }} — Панель моніторингу{% endblock %}
+{% block content %}
+<div class="breadcrumb">
+  <a href="/">Головна</a> / <span id="bc-device">{{ device_id }}</span>
+</div>
+
+<div class="detail-header">
+  <div>
+    <h1 id="dev-title" style="font-size:22px;">{{ device_id }}</h1>
+    <div class="model" style="color:var(--text-muted);font-size:13px;margin-top:4px;"
+         id="dev-model"></div>
+  </div>
+  <div>
+    <span id="dev-state" class="state-badge unknown">НЕВІДОМО</span>
+  </div>
+</div>
+
+<div class="detail-grid">
+  <div>
+    <div class="chart-wrap">
+      <h3>Потужність та COP</h3>
+      <canvas id="chart-power"></canvas>
+    </div>
+    <div class="chart-wrap">
+      <h3>Температури (подача / зворотка / надворі)</h3>
+      <canvas id="chart-temp"></canvas>
+    </div>
+
+    <h2 style="margin-top:20px;">Історія тривог</h2>
+    <div class="panel" style="padding:8px 18px;">
+      <div id="alerts-timeline" class="timeline"></div>
+    </div>
+  </div>
+
+  <div>
+    <div class="panel" style="margin-bottom:16px;">
+      <h3>Поточні значення</h3>
+      <div id="current-metrics" class="metrics-grid"></div>
+      <div id="last-seen" style="font-size:11px;color:var(--text-dim);margin-top:10px;"></div>
+    </div>
+
+    <div class="panel" style="margin-bottom:16px;">
+      <h3>Межі з онтології</h3>
+      <div id="bounds-info" class="specs-list"></div>
+    </div>
+
+    <div class="panel">
+      <h3>Технічні характеристики</h3>
+      <div id="specs-list" class="specs-list"></div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>const DEVICE_ID = {{ device_id|tojson }};</script>
+<script src="/static/device_detail.js"></script>
+{% endblock %}

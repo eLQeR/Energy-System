@@ -1,0 +1,96 @@
+@prefix lab:  <http://lab.example/ontology#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd:  <http://www.w3.org/2001/XMLSchema#> .
+
+# Source: spec_PUHZ-HW.pdf (Mitsubishi Ecodan Monobloc Product Information,
+#         document ID 788) and BH79D532H03_PUHZ-HW.pdf (installation manual).
+# These are the OUTDOOR units that pair with EHST20/EHPT20 cylinder units —
+# they hold the heating capacity / COP / refrigerant data missing from
+# the cylinder manuals.
+#
+# Test conditions for nominalCOP and nominalPowerKw: A-3/W35
+# (outdoor air -3°C dry bulb, water flow 35°C).
+
+# ─── PUHZ-W50VHA2 — 5 kW single phase ──────────────────────────────────
+lab:puhz_w50 a lab:AirToWaterHP ;
+    rdfs:label         "Mitsubishi EcoDan PUHZ-W50VHA2 (outdoor, 5 kW)" ;
+    lab:manufacturer   "Mitsubishi Electric" ;
+    lab:modelSeries    "PUHZ-W" ;
+    lab:modelVariant   "PUHZ-W50VHA2" ;
+    lab:modelVariant   "PUHZ-W50VHA2-BS" ;
+    lab:nominalPowerKw "4.8"^^xsd:float ;
+    lab:nominalCOP     "2.95"^^xsd:float ;
+    lab:refrigerant    "R410A" ;
+    lab:weightKg       "64.0"^^xsd:float ;
+    lab:powerSupplyV   "230"^^xsd:integer ;
+    lab:hasOperatingMode lab:heating_mode , lab:dhw_mode , lab:standby_mode ;
+    lab:hasComponent   lab:puhz_w50_compressor ,
+                       lab:puhz_w50_evaporator ,
+                       lab:puhz_w50_expansion_valve .
+
+lab:puhz_w50_compressor      a lab:Compressor ; rdfs:label "Compressor (PUHZ-W50)" .
+lab:puhz_w50_evaporator      a lab:Evaporator ; rdfs:label "Air-source evaporator (PUHZ-W50)" .
+lab:puhz_w50_expansion_valve a lab:Component  ; rdfs:label "Expansion valve (PUHZ-W50)" .
+
+# ─── PUHZ-W85VHA2 — 8.5 kW single phase ────────────────────────────────
+lab:puhz_w85 a lab:AirToWaterHP ;
+    rdfs:label         "Mitsubishi EcoDan PUHZ-W85VHA2 (outdoor, 8.5 kW)" ;
+    lab:manufacturer   "Mitsubishi Electric" ;
+    lab:modelSeries    "PUHZ-W" ;
+    lab:modelVariant   "PUHZ-W85VHA2" ;
+    lab:modelVariant   "PUHZ-W85VHA2-BS" ;
+    lab:nominalPowerKw "8.3"^^xsd:float ;
+    lab:nominalCOP     "2.80"^^xsd:float ;
+    lab:refrigerant    "R410A" ;
+    lab:weightKg       "77.0"^^xsd:float ;
+    lab:powerSupplyV   "230"^^xsd:integer ;
+    lab:hasOperatingMode lab:heating_mode , lab:dhw_mode , lab:standby_mode ;
+    lab:hasComponent   lab:puhz_w85_compressor ,
+                       lab:puhz_w85_evaporator ,
+                       lab:puhz_w85_expansion_valve .
+
+lab:puhz_w85_compressor      a lab:Compressor ; rdfs:label "Compressor (PUHZ-W85)" .
+lab:puhz_w85_evaporator      a lab:Evaporator ; rdfs:label "Air-source evaporator (PUHZ-W85)" .
+lab:puhz_w85_expansion_valve a lab:Component  ; rdfs:label "Expansion valve (PUHZ-W85)" .
+
+# ─── PUHZ-HW140VHA2 — 14 kW single phase ───────────────────────────────
+lab:puhz_hw140v a lab:AirToWaterHP ;
+    rdfs:label         "Mitsubishi EcoDan PUHZ-HW140VHA2 (outdoor, 14 kW, 1-ph)" ;
+    lab:manufacturer   "Mitsubishi Electric" ;
+    lab:modelSeries    "PUHZ-HW" ;
+    lab:modelVariant   "PUHZ-HW140VHA2" ;
+    lab:modelVariant   "PUHZ-HW140VHA2-BS" ;
+    lab:nominalPowerKw "14.0"^^xsd:float ;
+    lab:nominalCOP     "2.91"^^xsd:float ;
+    lab:refrigerant    "R410A" ;
+    lab:weightKg       "134.0"^^xsd:float ;
+    lab:powerSupplyV   "230"^^xsd:integer ;
+    lab:hasOperatingMode lab:heating_mode , lab:dhw_mode , lab:standby_mode ;
+    lab:hasComponent   lab:puhz_hw140v_compressor ,
+                       lab:puhz_hw140v_evaporator ,
+                       lab:puhz_hw140v_expansion_valve .
+
+lab:puhz_hw140v_compressor      a lab:Compressor ; rdfs:label "Compressor (PUHZ-HW140V)" .
+lab:puhz_hw140v_evaporator      a lab:Evaporator ; rdfs:label "Air-source evaporator (PUHZ-HW140V)" .
+lab:puhz_hw140v_expansion_valve a lab:Component  ; rdfs:label "Expansion valve (PUHZ-HW140V)" .
+
+# ─── PUHZ-HW140YHA2 — 14 kW three-phase ────────────────────────────────
+lab:puhz_hw140y a lab:AirToWaterHP ;
+    rdfs:label         "Mitsubishi EcoDan PUHZ-HW140YHA2 (outdoor, 14 kW, 3-ph)" ;
+    lab:manufacturer   "Mitsubishi Electric" ;
+    lab:modelSeries    "PUHZ-HW" ;
+    lab:modelVariant   "PUHZ-HW140YHA2" ;
+    lab:modelVariant   "PUHZ-HW140YHA2-BS" ;
+    lab:nominalPowerKw "14.0"^^xsd:float ;
+    lab:nominalCOP     "2.91"^^xsd:float ;
+    lab:refrigerant    "R410A" ;
+    lab:weightKg       "148.0"^^xsd:float ;
+    lab:powerSupplyV   "400"^^xsd:integer ;
+    lab:hasOperatingMode lab:heating_mode , lab:dhw_mode , lab:standby_mode ;
+    lab:hasComponent   lab:puhz_hw140y_compressor ,
+                       lab:puhz_hw140y_evaporator ,
+                       lab:puhz_hw140y_expansion_valve .
+
+lab:puhz_hw140y_compressor      a lab:Compressor ; rdfs:label "Compressor (PUHZ-HW140Y)" .
+lab:puhz_hw140y_evaporator      a lab:Evaporator ; rdfs:label "Air-source evaporator (PUHZ-HW140Y)" .
+lab:puhz_hw140y_expansion_valve a lab:Component  ; rdfs:label "Expansion valve (PUHZ-HW140Y)" .

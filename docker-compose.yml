@@ -1,0 +1,198 @@
+services:
+  # ─── Інфраструктура ────────────────────────────────────────────────
+  mosquitto:
+    image: eclipse-mosquitto:2
+    container_name: lab-mosquitto
+    ports:
+      - "1883:1883"
+    volumes:
+      - ./scripts/mosquitto.conf:/mosquitto/config/mosquitto.conf
+      - mosquitto_data:/mosquitto/data
+
+  influxdb:
+    image: influxdb:2.7
+    container_name: lab-influxdb
+    ports:
+      - "8087:8086"
+    environment:
+      DOCKER_INFLUXDB_INIT_MODE: setup
+      DOCKER_INFLUXDB_INIT_USERNAME: admin
+      DOCKER_INFLUXDB_INIT_PASSWORD: adminadmin
+      DOCKER_INFLUXDB_INIT_ORG: lab
+      DOCKER_INFLUXDB_INIT_BUCKET: metrics
+      DOCKER_INFLUXDB_INIT_ADMIN_TOKEN: lab-dev-token
+    volumes:
+      - influx_data:/var/lib/influxdb2
+
+  fuseki:
+    image: secoresearch/fuseki:latest
+    container_name: lab-fuseki
+    ports:
+      - "3030:3030"
+    environment:
+      ADMIN_PASSWORD: admin
+      ENABLE_DATA_WRITE: "true"
+      ENABLE_UPDATE: "true"
+      ENABLE_UPLOAD: "true"
+      FUSEKI_DATASET_1: lab
+    volumes:
+      - fuseki_data:/fuseki-base/databases
+
+  grafana:
+    image: grafana/grafana:10.4.0
+    container_name: lab-grafana
+    ports:
+      - "3000:3000"
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+    volumes:
+      - grafana_data:/var/lib/grafana
+
+  # ─── Диплом 2: ініціалізатор онтології (one-shot) ──────────────────
+  ontology_loader:
+    build: .
+    image: lab-python:latest
+    container_name: lab-ontology-loader
+    depends_on:
+      - fuseki
+    environment:
+      FUSEKI_URL: http://fuseki:3030/lab
+    volumes:
+      - ./ontology:/app/ontology
+    command: python3 ontology/load_ontology.py
+    restart: "no"
+
+  # ─── Диплом 2: SPARQL → HTTP API ──────────────────────────────────
+  ontology_api:
+    image: lab-python:latest
+    container_name: lab-ontology-api
+    depends_on:
+      ontology_loader:
+        condition: service_completed_successfully
+    environment:
+      FUSEKI_URL: http://fuseki:3030/lab
+    ports:
+      - "5002:5000"
+    volumes:
+      - ./ontology:/app/ontology
+    command: python3 ontology/ontology_api.py
+    restart: unless-stopped
+
+  # ─── Диплом 1: збирач метрик EcoDan ───────────────────────────────
+  collector:
+    image: lab-python:latest
+    container_name: lab-collector
+    depends_on:
+      - mosquitto
+    environment:
+      MQTT_BROKER: mosquitto
+      MQTT_PORT: "1883"
+      MELCLOUD_USER: ${MELCLOUD_USER:-demo}
+      MELCLOUD_PASS: ${MELCLOUD_PASS:-}
+      DEVICE_ID: ${DEVICE_ID:-ecodan_01}
+      POLL_INTERVAL_SEC: ${POLL_INTERVAL_SEC:-30}
+    command: python3 monitoring/collector.py
+    restart: unless-stopped
+
+  # ─── Диплом 1: MQTT → InfluxDB ────────────────────────────────────
+  mqtt_bridge:
+    image: lab-python:latest
+    container_name: lab-mqtt-bridge
+    depends_on:
+      - mosquitto
+      - influxdb
+    environment:
+      MQTT_BROKER: mosquitto
+      MQTT_PORT: "1883"
+      INFLUX_URL: http://influxdb:8086
+      INFLUX_TOKEN: lab-dev-token
+      INFLUX_ORG: lab
+      INFLUX_BUCKET: metrics
+    command: python3 monitoring/mqtt_to_influx.py
+    restart: unless-stopped
+
+  # ─── Диплом 3: edge-analyzer + локальна веб-панель ────────────────
+  # ВИНЕСЕНО в окремий compose-файл (docker-compose.pi.yml), щоб імітувати
+  # розгортання на Raspberry Pi. Запуск на тому ж хості:
+  #   docker compose -f docker-compose.pi.yml up -d
+  # Або з профілем "pi" для запуску в єдиному стеку:
+  analyzer_panel:
+    image: lab-python:latest
+    container_name: lab-analyzer
+    profiles: ["pi-local"]   # не стартує без явного --profile pi-local
+    depends_on:
+      - mosquitto
+      - ontology_api
+      - alerts_server
+    environment:
+      MQTT_BROKER: mosquitto
+      MQTT_PORT: "1883"
+      ONTOLOGY_API: http://ontology_api:5000
+      ALERTS_API:   http://alerts_server:5003
+      REMIND_INTERVAL_SEC: ${REMIND_INTERVAL_SEC:-300}
+    ports:
+      - "5001:5001"
+    command: python3 analyzer/web_panel.py
+    restart: unless-stopped
+
+  # ─── Центральний сервер тривог + dashboard для інженера ────────────
+  alerts_server:
+    image: lab-python:latest
+    container_name: lab-alerts
+    depends_on:
+      - ontology_api
+      - influxdb
+    environment:
+      ONTOLOGY_API:  http://ontology_api:5000
+      ALERTS_PORT:   "5003"
+      ALERTS_DB:     /data/alerts.db
+      INFLUX_URL:    http://influxdb:8086
+      INFLUX_TOKEN:  lab-dev-token
+      INFLUX_ORG:    lab
+      INFLUX_BUCKET: metrics
+    ports:
+      - "5003:5003"
+    volumes:
+      - alerts_data:/data
+    command: python3 alerts_server/alerts_server.py
+    restart: unless-stopped
+
+  # ─── Диплом 1: синтетичний паблішер (для розробки analyzer) ────────
+  # У продакшені замінюється на collector, що тягне реальний MELCloud.
+  synthetic_publisher:
+    image: lab-python:latest
+    container_name: lab-synthetic
+    depends_on:
+      - mosquitto
+    environment:
+      MQTT_BROKER: mosquitto
+      MQTT_PORT: "1883"
+      DEVICE_ID:  ${DEVICE_ID:-ecodan_01}
+      POLL_INTERVAL_SEC: ${POLL_INTERVAL_SEC:-60}
+    profiles: ["dev"]   # запускати: docker compose --profile dev up -d
+    command: python3 monitoring/synthetic_publisher.py --output mqtt
+    restart: unless-stopped
+
+  # ─── Диплом 2: PDF → онтологія (one-shot, запускати вручну) ────────
+  # Запуск:
+  #   docker compose --profile tools run --rm pdf_extractor \
+  #       --pdf ontology/BH79D188H02.pdf --device-id ehst20 \
+  #       --out ontology/extracted/ehst20.ttl
+  pdf_extractor:
+    build: .
+    image: lab-python:latest
+    container_name: lab-pdf-extractor
+    profiles: ["tools"]
+    volumes:
+      - ./ontology:/app/ontology
+    environment:
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+    entrypoint: ["python3", "-m", "ontology.pdf_to_ontology.cli"]
+
+volumes:
+  mosquitto_data:
+  influx_data:
+  alerts_data:
+  fuseki_data:
+  grafana_data:

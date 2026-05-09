@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="uk">
+<head>
+<meta charset="utf-8">
+<title>EnergyLab</title>
+<style>
+  body { font-family: system-ui, sans-serif; margin: 2rem; background: #0f1419; color: #e6e6e6; }
+  h1 { margin-top: 0; }
+  .device {
+    background: #1a2028; border-radius: 10px; padding: 1rem 1.5rem;
+    margin-bottom: 1rem; border-left: 6px solid #888;
+  }
+  .device.normal  { border-left-color: #3fb950; }
+  .device.warning { border-left-color: #e3b341; }
+  .device.anomaly { border-left-color: #f85149; }
+  .state-badge {
+    display: inline-block; padding: 0.2rem 0.6rem; border-radius: 4px;
+    font-weight: bold; font-size: 0.9rem;
+  }
+  .normal  .state-badge { background: #26442b; color: #7ee787; }
+  .warning .state-badge { background: #4a3c17; color: #f2cc60; }
+  .anomaly .state-badge { background: #541a1a; color: #ff7b72; }
+  table { border-collapse: collapse; margin-top: 0.8rem; }
+  td { padding: 2px 12px 2px 0; }
+  td:first-child { color: #8b949e; }
+  .anomalies { margin-top: 0.5rem; color: #ff7b72; font-family: monospace; font-size: 0.85rem; }
+  .muted { color: #8b949e; font-size: 0.85rem; }
+</style>
+</head>
+<body>
+  <h1>Стан обладнання <span class="muted">(оновлення 3с)</span></h1>
+  <div id="devices"></div>
+
+<script>
+async function refresh() {
+  const resp = await fetch('/api/status');
+  const data = await resp.json();
+  const root = document.getElementById('devices');
+
+  if (!data.devices.length) {
+    root.innerHTML = '<p class="muted">Жоден пристрій ще не прислав метрики. Запусти collector.</p>';
+    return;
+  }
+
+  root.innerHTML = data.devices.map(d => {
+    const s = d.state || {};
+    const m = d.metrics || {};
+    const cls = s.state || 'unknown';
+    const anomalies = (s.anomalies || []).length
+      ? `<div class="anomalies">⚠ ${s.anomalies.join(', ')}</div>` : '';
+    return `
+      <div class="device ${cls}">
+        <div>
+          <strong>${d.device_id}</strong>
+          <span class="state-badge">${(s.state || 'unknown').toUpperCase()}</span>
+          <span class="muted">  conf=${(s.confidence || 0).toFixed(2)}  · ${d.updated_at}</span>
+        </div>
+        <table>
+          <tr><td>Потужність</td><td>${(m.power_kw ?? 0).toFixed(2)} кВт</td>
+              <td>Подача</td><td>${(m.flow_temp_c ?? 0).toFixed(1)} °C</td></tr>
+          <tr><td>Зворотна температура</td><td>${(m.return_temp_c ?? 0).toFixed(1)} °C</td>
+              <td>COP</td><td>${(m.cop ?? 0).toFixed(2)}</td></tr>
+          <tr><td>Режим</td><td>${m.mode || '—'}</td>
+              <td>Надвір</td><td>${(m.outdoor_temp_c ?? 0).toFixed(1)} °C</td></tr>
+        </table>
+        ${anomalies}
+        <div class="muted" style="margin-top:0.4rem">${s.explanation || ''}</div>
+      </div>`;
+  }).join('');
+}
+refresh();
+setInterval(refresh, 3000);
+</script>
+</body>
+</html>

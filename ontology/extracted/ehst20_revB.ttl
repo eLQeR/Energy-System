@@ -1,0 +1,45 @@
+@prefix lab:  <http://lab.example/ontology#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd:  <http://www.w3.org/2001/XMLSchema#> .
+
+# Source: Mitsubishi installation manual BH79D290H03.pdf (revision B series)
+# Covers cylinder units EHST20C-*M*HB / *M*B / VM6SB and EHPT20X variants.
+
+lab:ehst20_revB a lab:AirToWaterHP ;
+    rdfs:label         "Mitsubishi EcoDan EHST20/EHPT20 (rev. B)" ;
+    lab:manufacturer   "Mitsubishi Electric" ;
+    lab:modelSeries    "EHST20" ;
+    lab:modelSeries    "EHPT20" ;
+    lab:modelVariant   "EHST20C-VM6HB" ;
+    lab:modelVariant   "EHST20C-YM9HB" ;
+    lab:modelVariant   "EHST20C-TM9HB" ;
+    lab:modelVariant   "EHST20C-VM2B" ;
+    lab:modelVariant   "EHST20C-VM6B" ;
+    lab:modelVariant   "EHST20C-YM9B" ;
+    lab:modelVariant   "EHST20C-VM6SB" ;
+    lab:modelVariant   "EHPT20X-VM2HB" ;
+    lab:modelVariant   "EHPT20X-VM6HB" ;
+    lab:modelVariant   "EHPT20X-YM9HB" ;
+    lab:modelVariant   "EHPT20X-TM9HB" ;
+    lab:modelVariant   "EHPT20X-VM2B" ;
+    lab:modelVariant   "EHPT20X-VM6B" ;
+    lab:modelVariant   "EHPT20X-YM9B" ;
+    lab:tankVolumeL    "200.0"^^xsd:float ;
+    lab:maxFlowTempC   "60.0"^^xsd:float ;
+    lab:minFlowTempC   "25.0"^^xsd:float ;
+    lab:refrigerant    "R410A" ;
+    lab:powerSupplyV   "230"^^xsd:integer ;
+    lab:hasOperatingMode lab:heating_mode , lab:dhw_mode , lab:standby_mode ;
+    lab:hasComponent   lab:ehst20_revB_compressor ,
+                       lab:ehst20_revB_evaporator ,
+                       lab:ehst20_revB_condenser ,
+                       lab:ehst20_revB_plate_hex ,
+                       lab:ehst20_revB_booster_heater ,
+                       lab:ehst20_revB_immersion_heater .
+
+lab:ehst20_revB_compressor       a lab:Compressor   ; rdfs:label "Compressor (outdoor unit)" .
+lab:ehst20_revB_evaporator       a lab:Evaporator   ; rdfs:label "Evaporator (outdoor air heat exchanger)" .
+lab:ehst20_revB_condenser        a lab:Condenser    ; rdfs:label "Condenser" .
+lab:ehst20_revB_plate_hex        a lab:Component    ; rdfs:label "Plate heat exchanger" .
+lab:ehst20_revB_booster_heater   a lab:Component    ; rdfs:label "Booster heater (2 kW + 4 kW or 3 kW + 6 kW)" .
+lab:ehst20_revB_immersion_heater a lab:Component    ; rdfs:label "Immersion heater (3 kW)" .

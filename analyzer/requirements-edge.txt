@@ -1,0 +1,10 @@
+# Легкі залежності для запуску edge_analyzer.py на Raspberry Pi.
+# БЕЗ scikit-learn / numpy / pandas / scipy / joblib — лише rule-based
+# перевірка проти онтологічних меж.
+#
+# Встановлення на Pi:
+#   pip install -r analyzer/requirements-edge.txt
+paho-mqtt>=2.1.0
+requests>=2.32.3
+python-dotenv>=1.0.1
+pydantic>=2.11

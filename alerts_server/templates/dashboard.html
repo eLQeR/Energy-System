@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% block content %}
+
+<section class="stats-grid" id="stats-grid">
+  <div class="stat-card danger">
+    <div class="label">Активні тривоги</div>
+    <div class="value" id="stat-active">—</div>
+    <div class="sub" id="stat-active-sub">потребують уваги</div>
+  </div>
+  <div class="stat-card warn">
+    <div class="label">Підтверджені</div>
+    <div class="value" id="stat-ack">—</div>
+    <div class="sub">очікують усунення</div>
+  </div>
+  <div class="stat-card success">
+    <div class="label">Вирішені за 24 год</div>
+    <div class="value" id="stat-resolved">—</div>
+    <div class="sub">причини усунено</div>
+  </div>
+  <div class="stat-card info">
+    <div class="label">Обладнання в онтології</div>
+    <div class="value" id="stat-devices">—</div>
+    <div class="sub">Mitsubishi EcoDan, PUHZ-W/HW, EHST20</div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="section-header">
+    <h2>Активні тривоги</h2>
+    <span class="muted" id="alerts-count" style="font-size:12px;color:var(--text-muted);"></span>
+  </div>
+  <div id="active-alerts" class="alerts-list"></div>
+</section>
+
+<section class="section">
+  <div class="section-header">
+    <h2>Стан обладнання</h2>
+    <span style="font-size:12px;color:var(--text-muted);">
+      Натисніть на картку для деталей
+    </span>
+  </div>
+  <div id="devices-grid" class="devices-grid"></div>
+</section>
+
+<section class="section">
+  <h2>Історія подій</h2>
+  <div class="panel" style="padding:0;">
+    <div id="history-timeline" class="timeline" style="padding:8px 18px;"></div>
+  </div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script src="/static/dashboard.js"></script>
+{% endblock %}

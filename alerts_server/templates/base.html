@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="uk">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>{% block title %}Панель моніторингу — EnergyLab{% endblock %}</title>
+  <link rel="stylesheet" href="/static/style.css">
+  <link rel="icon" href="data:image/svg+xml,
+    <svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><text y='20' font-size='22'>⚡</text></svg>">
+</head>
+<body>
+  <div class="topbar">
+    <div class="brand">
+      <div class="logo">EL</div>
+      <div>
+        <div>EnergyLab</div>
+        <div style="font-size:11px;color:var(--text-muted);font-weight:400;">
+          Панель інженера - EnergyLab
+        </div>
+      </div>
+    </div>
+    <div class="meta">
+      <span><span id="live-dot" class="live-dot"></span>
+            <span id="live-status">оновлення кожні 5 с</span></span>
+      <span id="now-clock"></span>
+      <a href="/docs" title="OpenAPI / Swagger">API</a>
+    </div>
+  </div>
+
+  <main>
+    {% block content %}{% endblock %}
+  </main>
+
+  <div id="toast-area"></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <script src="/static/common.js"></script>
+  {% block scripts %}{% endblock %}
+</body>
+</html>

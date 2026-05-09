@@ -1,0 +1,60 @@
+{
+  "title": "Cyber-Energy Lab — EcoDan",
+  "uid": "lab-ecodan",
+  "schemaVersion": 39,
+  "timezone": "browser",
+  "time": {"from": "now-6h", "to": "now"},
+  "refresh": "10s",
+  "panels": [
+    {
+      "id": 1,
+      "type": "timeseries",
+      "title": "Електрична потужність, кВт",
+      "gridPos": {"x": 0, "y": 0, "w": 12, "h": 8},
+      "datasource": {"type": "influxdb", "uid": "influx-lab"},
+      "targets": [{
+        "query": "from(bucket: \"metrics\") |> range(start: v.timeRangeStart, stop: v.timeRangeStop) |> filter(fn: (r) => r._measurement == \"equipment_metrics\" and r._field == \"power_kw\")"
+      }]
+    },
+    {
+      "id": 2,
+      "type": "timeseries",
+      "title": "Температура подачі / зворотки, °C",
+      "gridPos": {"x": 12, "y": 0, "w": 12, "h": 8},
+      "datasource": {"type": "influxdb", "uid": "influx-lab"},
+      "targets": [{
+        "query": "from(bucket: \"metrics\") |> range(start: v.timeRangeStart, stop: v.timeRangeStop) |> filter(fn: (r) => r._measurement == \"equipment_metrics\" and (r._field == \"flow_temp_c\" or r._field == \"return_temp_c\"))"
+      }]
+    },
+    {
+      "id": 3,
+      "type": "stat",
+      "title": "Поточний COP",
+      "gridPos": {"x": 0, "y": 8, "w": 6, "h": 6},
+      "datasource": {"type": "influxdb", "uid": "influx-lab"},
+      "targets": [{
+        "query": "from(bucket: \"metrics\") |> range(start: -5m) |> filter(fn: (r) => r._field == \"cop\") |> last()"
+      }]
+    },
+    {
+      "id": 4,
+      "type": "stat",
+      "title": "ΔT (подача − зворотка), °C",
+      "gridPos": {"x": 6, "y": 8, "w": 6, "h": 6},
+      "datasource": {"type": "influxdb", "uid": "influx-lab"},
+      "targets": [{
+        "query": "from(bucket: \"metrics\") |> range(start: -5m) |> filter(fn: (r) => r._field == \"delta_t_c\") |> last()"
+      }]
+    },
+    {
+      "id": 5,
+      "type": "timeseries",
+      "title": "Накопичена енергія, кВт·год",
+      "gridPos": {"x": 12, "y": 8, "w": 12, "h": 6},
+      "datasource": {"type": "influxdb", "uid": "influx-lab"},
+      "targets": [{
+        "query": "from(bucket: \"metrics\") |> range(start: v.timeRangeStart, stop: v.timeRangeStop) |> filter(fn: (r) => r._field == \"energy_kwh\")"
+      }]
+    }
+  ]
+}
