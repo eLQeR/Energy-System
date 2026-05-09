@@ -2,24 +2,24 @@
 
 ## Що це
 
-Edge-вузол (Raspberry Pi / міні-ПК) біля обладнання збирає метрики з
-теплового насоса Mitsubishi EcoDan через MELCloud API, публікує їх у
-MQTT, зберігає в InfluxDB і виводить у Grafana.
+Edge-вузол (Raspberry Pi) біля обладнання збирає метрики з теплового
+насоса напряму, публікує їх у MQTT. Сервер приймає їх у MQTT, зберігає
+в InfluxDB і виводить у Grafana.
 
 ## Компоненти
 
 | Файл | Призначення |
 |---|---|
-| `collector.py` | Опитує MELCloud, публікує в `lab/equipment/{id}/metrics` |
 | `mqtt_to_influx.py` | Підписується на MQTT, пише у InfluxDB |
+| `synthetic_publisher.py` | Генерує синтетичні метрики у MQTT — для демо/розробки без живого Pi |
 | `grafana_dashboard.json` | Імпортувати в Grafana після підключення InfluxDB datasource |
 
 ## Запуск
 
 ```bash
 pip install -r requirements.txt
-python collector.py &        # тягне з EcoDan або синтетичні дані
-python mqtt_to_influx.py &   # пише в InfluxDB
+python synthetic_publisher.py --output mqtt &  # синтетика (опціонально)
+python mqtt_to_influx.py &                     # пише в InfluxDB
 ```
 
 Потім у Grafana (http://localhost:3000, admin/admin):
@@ -27,7 +27,9 @@ python mqtt_to_influx.py &   # пише в InfluxDB
    token `lab-dev-token`, bucket `metrics`, UID `influx-lab`.
 2. Dashboards → Import → завантаж `grafana_dashboard.json`.
 
-## Демо-режим без EcoDan
+## Демо-режим без Raspberry Pi
 
-Залиш `MELCLOUD_USER=demo` у `.env` — collector публікуватиме правдоподібні
-синтетичні метрики, щоб можна було розробляти дашборд і тестувати конвеєр.
+`synthetic_publisher.py` генерує правдоподібні метрики і публікує їх у те
+саме MQTT-топік, що й Pi. Це дозволяє розробляти дашборди й тестувати
+конвеєр без живого обладнання. У `docker-compose.yml` він стартує за
+замовчуванням.

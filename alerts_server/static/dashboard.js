@@ -43,7 +43,6 @@ function renderActiveAlerts(alerts) {
 
   if (!alerts.length) {
     root.innerHTML = `<div class="empty">
-      <div class="icon">✓</div>
       <div>Немає активних тривог. Усе обладнання працює в межах онтологічних специфікацій.</div>
     </div>`;
     return;
@@ -73,7 +72,6 @@ function renderDevices(devices) {
   const root = document.getElementById("devices-grid");
   if (!devices.length) {
     root.innerHTML = `<div class="empty">
-      <div class="icon">⏳</div>
       <div>Онтологічний API не повернув обладнання. Перевірте, чи запущено Fuseki.</div>
     </div>`;
     return;

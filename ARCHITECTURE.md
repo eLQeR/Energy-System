@@ -4,39 +4,41 @@
 
 ```mermaid
 flowchart TB
-    subgraph EQ["🏭 Обладнання лабораторії"]
+    subgraph EQ["Обладнання лабораторії"]
         ecodan["Mitsubishi EcoDan<br/>(тепловий насос)"]
+        pi["Raspberry Pi<br/>(edge-вузол)"]
         other["Інше обладнання<br/>(розширення)"]
     end
 
-    subgraph BUS["📡 MQTT шина (Mosquitto)"]
+    subgraph BUS["MQTT шина (Mosquitto)"]
         tM["lab/equipment/+/metrics"]
         tS["lab/equipment/+/state"]
     end
 
-    subgraph D1["📊 Диплом 1 — Моніторинг енергоспоживання"]
-        col["collector.py<br/>MELCloud → MQTT"]
+    subgraph D1["Диплом 1 — Моніторинг енергоспоживання"]
+        synth["synthetic_publisher.py<br/>(демо-метрики → MQTT)"]
         br["mqtt_to_influx.py<br/>міст"]
         influx[("InfluxDB<br/>часові ряди")]
         graf["Grafana<br/>дашборд :3000"]
     end
 
-    subgraph D2["🧠 Диплом 2 — Онтологія + ШІ"]
+    subgraph D2["Диплом 2 — Онтологія + ШІ"]
         ttl["equipment.ttl<br/>OWL/Turtle"]
         fus[("Fuseki<br/>triple store")]
         api["ontology_api.py<br/>Flask + SPARQL :5002"]
         llm["llm_parser.py<br/>PDF паспорт → Turtle"]
     end
 
-    subgraph D3["⚡ Диплом 3 — Edge-аналіз стану"]
+    subgraph D3["Диплом 3 — Edge-аналіз стану"]
         anl["analyzer.py<br/>IsolationForest + правила"]
         mdl[("anomaly_model.pkl")]
         panel["web_panel.py<br/>веб-панель :5001"]
     end
 
-    ecodan -->|MELCloud API| col
-    other -.->|Modbus/датчики| col
-    col -->|publish| tM
+    ecodan -->|датчики/Modbus| pi
+    other -.->|датчики| pi
+    pi -->|publish (на проді)| tM
+    synth -->|publish (демо)| tM
     tM -->|subscribe| br
     tM -->|subscribe| anl
     br -->|write| influx
@@ -51,7 +53,7 @@ flowchart TB
     anl -->|publish| tS
     tS -->|subscribe| panel
 
-    user(("👤 Оператор"))
+    user(("Оператор"))
     graf --> user
     panel --> user
     api -. JSON .-> user
@@ -61,11 +63,11 @@ flowchart TB
     classDef d3 fill:#3fb95033,stroke:#3fb950
     classDef bus fill:#e3b34133,stroke:#e3b341
     classDef eq  fill:#f8514933,stroke:#f85149
-    class col,br,influx,graf d1
+    class synth,br,influx,graf d1
     class ttl,fus,api,llm d2
     class anl,mdl,panel d3
     class tM,tS bus
-    class ecodan,other eq
+    class ecodan,pi,other eq
 ```
 
 ## Потік одного циклу (sequence)
@@ -74,7 +76,7 @@ flowchart TB
 sequenceDiagram
     autonumber
     participant HP as EcoDan
-    participant C as collector<br/>(Диплом 1)
+    participant C as Raspberry Pi /<br/>synthetic_publisher
     participant M as Mosquitto
     participant B as mqtt_bridge<br/>(Диплом 1)
     participant I as InfluxDB
@@ -84,7 +86,7 @@ sequenceDiagram
     participant G as Grafana
 
     loop кожні POLL_INTERVAL_SEC
-        C->>HP: MELCloud /Device/Get
+        C->>HP: зчитування з датчиків (Pi)
         HP-->>C: metrics (power, flow, COP, ...)
         C->>M: publish lab/.../metrics (JSON)
         par паралельно
@@ -110,7 +112,7 @@ sequenceDiagram
 Без цього контракту жодна інтеграція між дипломами не працює.
 
 ```
-Topic: lab/equipment/{device_id}/metrics        ← публікує collector
+Topic: lab/equipment/{device_id}/metrics        ← публікує Raspberry Pi (або synthetic_publisher)
 {
   "device_id": "ecodan_01",
   "timestamp": "2026-04-20T14:30:00Z",

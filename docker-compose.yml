@@ -79,22 +79,6 @@ services:
     command: python3 ontology/ontology_api.py
     restart: unless-stopped
 
-  # ─── Диплом 1: збирач метрик EcoDan ───────────────────────────────
-  collector:
-    image: lab-python:latest
-    container_name: lab-collector
-    depends_on:
-      - mosquitto
-    environment:
-      MQTT_BROKER: mosquitto
-      MQTT_PORT: "1883"
-      MELCLOUD_USER: ${MELCLOUD_USER:-demo}
-      MELCLOUD_PASS: ${MELCLOUD_PASS:-}
-      DEVICE_ID: ${DEVICE_ID:-ecodan_01}
-      POLL_INTERVAL_SEC: ${POLL_INTERVAL_SEC:-30}
-    command: python3 monitoring/collector.py
-    restart: unless-stopped
-
   # ─── Диплом 1: MQTT → InfluxDB ────────────────────────────────────
   mqtt_bridge:
     image: lab-python:latest
@@ -158,8 +142,9 @@ services:
     command: python3 alerts_server/alerts_server.py
     restart: unless-stopped
 
-  # ─── Диплом 1: синтетичний паблішер (для розробки analyzer) ────────
-  # У продакшені замінюється на collector, що тягне реальний MELCloud.
+  # ─── Диплом 1: синтетичний паблішер метрик ────────────────────────
+  # Реальні дані з обладнання збирає Raspberry Pi напряму (поза цим compose).
+  # Тут — синтетика для локальної розробки/демо.
   synthetic_publisher:
     image: lab-python:latest
     container_name: lab-synthetic
@@ -170,7 +155,6 @@ services:
       MQTT_PORT: "1883"
       DEVICE_ID:  ${DEVICE_ID:-ecodan_01}
       POLL_INTERVAL_SEC: ${POLL_INTERVAL_SEC:-60}
-    profiles: ["dev"]   # запускати: docker compose --profile dev up -d
     command: python3 monitoring/synthetic_publisher.py --output mqtt
     restart: unless-stopped
 

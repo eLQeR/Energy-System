@@ -314,7 +314,7 @@ def publish_stdout(msgs: list[MetricsMessage]) -> None:
 # ─── Безперервний MQTT-режим (live) ───────────────────────────────────────────
 
 def run_live_mqtt(args: argparse.Namespace) -> None:
-    """Нескінченний цикл — аналог collector.py, але з гнучкою ін'єкцією аномалій."""
+    """Нескінченний цикл публікації синтетичних метрик у MQTT."""
     try:
         import paho.mqtt.client as mqtt_mod
     except ImportError:

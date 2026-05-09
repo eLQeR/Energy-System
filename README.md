@@ -3,7 +3,7 @@
 Монорепозиторій трьох дипломних робіт, які разом утворюють одну працюючу
 систему. **Все крутиться в Docker** — на хості потрібен тільки `docker`.
 
-📐 **Архітектура з діаграмами:** [ARCHITECTURE.md](ARCHITECTURE.md)
+**Архітектура з діаграмами:** [ARCHITECTURE.md](ARCHITECTURE.md)
 
 ## Структура
 
@@ -11,7 +11,7 @@
 .
 ├── Dockerfile                  Один образ для всіх Python-сервісів
 ├── docker-compose.yml          Інфраструктура + 5 Python-сервісів
-├── .env.example                Копіюй у .env для реальних кредів MELCloud
+├── .env.example                Копіюй у .env (DEVICE_ID, інтервали, токени)
 ├── shared/                     Спільний контракт (JSON-схеми, топіки)
 ├── monitoring/                 ДИПЛОМ 1 — збір метрик EcoDan + дашборд
 ├── ontology/                   ДИПЛОМ 2 — онтологія + SPARQL API + LLM-парсер
@@ -48,7 +48,7 @@ bash scripts/start_all.sh     # або: docker compose up -d --build
 | `influxdb` | 1 | БД часових рядів |
 | `fuseki` | 2 | Triple store + SPARQL endpoint |
 | `grafana` | 1 | Дашборд |
-| `collector` | 1 | MELCloud/synthetic → MQTT |
+| `synthetic_publisher` | 1 | Синтетичні метрики → MQTT (для демо/розробки; на проді метрики публікує Raspberry Pi напряму) |
 | `mqtt_bridge` | 1 | MQTT → InfluxDB |
 | `ontology_loader` | 2 | Одноразовий — вантажить `equipment.ttl` у Fuseki |
 | `ontology_api` | 2 | Flask над SPARQL (:5000) |
@@ -57,7 +57,7 @@ bash scripts/start_all.sh     # або: docker compose up -d --build
 ## Логи та діагностика
 
 ```bash
-docker compose logs -f collector           # збір з EcoDan
+docker compose logs -f synthetic_publisher # синтетичні метрики
 docker compose logs -f analyzer_panel      # вердикти ML
 docker compose logs -f ontology_api        # SPARQL-запити
 docker compose ps                          # хто живий
@@ -78,7 +78,7 @@ docker compose ps                          # хто живий
 ## Спільний контракт повідомлень
 
 Топіки MQTT:
-- `lab/equipment/{device_id}/metrics` — сирі метрики (публікує collector)
+- `lab/equipment/{device_id}/metrics` — сирі метрики (публікує Raspberry Pi або synthetic_publisher)
 - `lab/equipment/{device_id}/state` — оцінка стану (публікує analyzer)
 
 Формати — див. [shared/schemas.py](shared/schemas.py).
@@ -87,7 +87,7 @@ docker compose ps                          # хто живий
 
 | Диплом | Тема | Що робить | Читає від інших | Віддає іншим |
 |---|---|---|---|---|
-| 1 | Моніторинг енергоспоживання | Збирає метрики з EcoDan, пише в InfluxDB, показує в Grafana | стан з `lab/.../state` (для підсвічування аномалій) | сирі метрики в `lab/.../metrics` |
+| 1 | Моніторинг енергоспоживання | Приймає метрики (від Raspberry Pi або synthetic_publisher) у MQTT, пише в InfluxDB, показує в Grafana | стан з `lab/.../state` (для підсвічування аномалій) | сирі метрики в `lab/.../metrics` |
 | 2 | Онтологія + ШІ | Зберігає знання про обладнання, парсить паспорти через LLM | — | SPARQL + HTTP API зі специфікаціями |
 | 3 | Edge-аналіз стану | Читає метрики, запитує очікувані значення в онтології, запускає ML, публікує стан | метрики Диплому 1, специфікації Диплому 2 | стан у `lab/.../state` |
 
