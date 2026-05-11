@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 from pathlib import Path
 
 import numpy as np
@@ -31,15 +32,24 @@ log = logging.getLogger("train_tf")
 
 HERE = Path(__file__).parent
 DATA = HERE / "training_data.csv"
-MODEL_KERAS = HERE / "anomaly_ae.keras"
-MODEL_TFLITE = HERE / "anomaly_ae.tflite"
-MODEL_NPZ = HERE / "anomaly_ae.npz"
-META_FILE = HERE / "anomaly_ae.meta.json"
+
+# Дві версії моделі можуть співіснувати у repo:
+#   default — поріг 99-й перцентиль (≈1% false-positive ratio на normal)
+#   strict  — поріг 99.5 перцентиль (≈0.5%, рідші warning-и)
+#
+# Перемикається через env-змінні:
+#   AE_VARIANT=strict AE_THRESHOLD_PERCENTILE=99.5 python3 train_tf_model.py
+VARIANT = os.getenv("AE_VARIANT", "").strip()
+SUFFIX = f"_{VARIANT}" if VARIANT else ""
+MODEL_KERAS = HERE / f"anomaly_ae{SUFFIX}.keras"
+MODEL_TFLITE = HERE / f"anomaly_ae{SUFFIX}.tflite"
+MODEL_NPZ = HERE / f"anomaly_ae{SUFFIX}.npz"
+META_FILE = HERE / f"anomaly_ae{SUFFIX}.meta.json"
 
 FEATURES = ["power_kw", "delta_t_c", "flow_temp_c", "outdoor_temp_c", "cop"]
 EPOCHS = 60
 BATCH_SIZE = 64
-THRESHOLD_PERCENTILE = 99.0  # MSE вище за цей перцентиль -> аномалія
+THRESHOLD_PERCENTILE = float(os.getenv("AE_THRESHOLD_PERCENTILE", "99.0"))
 
 
 def build_autoencoder(n_features: int) -> keras.Model:

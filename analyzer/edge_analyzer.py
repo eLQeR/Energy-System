@@ -87,16 +87,12 @@ def rule_based_checks(metrics: dict, bounds: dict) -> list[str]:
 
     return anomalies
 
-"""Чим серйозніше порушення, тим вища категорія."""
+"""Будь-яке порушення онтологічних меж — anomaly. ML-сигнали тут відсутні
+(edge_analyzer не має моделі), тож якщо є коди — це rule breach → червоне."""
 def classify(anomalies: list[str]) -> str:
     if not anomalies:
         return "normal"
-    # power_over_limit та sensor_fault - критичні
-    for a in anomalies:
-        if a.startswith(("power_over_limit", "flow_temp_over_limit")):
-            return "anomaly"
-    # все інше - попередження
-    return "warning"
+    return "anomaly"
 
 
 def analyze(msg: MetricsMessage) -> StateMessage:

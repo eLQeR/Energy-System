@@ -6,6 +6,7 @@ import os
 import sqlite3
 import sys
 import threading
+from collections import deque
 from contextlib import contextmanager
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -108,6 +109,15 @@ class HeartbeatBody(BaseModel):
     state: str            # normal | warning | anomaly | unknown
     metrics: dict = {}
     bounds:  dict = {}
+    prediction: dict | None = None   # {mse, threshold, predicted{}, score_ratio, is_anomaly}
+
+
+# Ring buffer in-memory: останні 90 хв ML-прогнозів на пристрій.
+# Чому в пам'яті, а не в Influx: прогнози — допоміжна візуалізація, не критичні
+# дані, і analyzer спить між метриками 60 с (max 90 точок = ~5 KB на пристрій).
+_PREDICTIONS_LOCK = threading.Lock()
+_PREDICTIONS: dict[str, deque] = {}
+_PREDICTIONS_MAXLEN = 90
 
 
 def _row_to_alert(row: sqlite3.Row) -> dict:
@@ -193,10 +203,11 @@ def create_alert(payload: AlertPayload):
 
 
 @app.post("/api/heartbeat", status_code=204,
-          summary="Оновити last_seen / metrics пристрою без створення алерту")
+          summary="Оновити last_seen / metrics / ML-прогноз пристрою")
 def heartbeat(b: HeartbeatBody):
-    """Кожен метрик, що проходить через analyzer, оновлює тут last_seen.
-    Без цього UI бачить «онлайн» тільки під час алертів."""
+    """Кожен метрик з analyzer оновлює тут last_seen, актуальні значення
+    і — якщо аналізатор використовує автоенкодер — ML-прогноз (predicted
+    values + reconstruction MSE)."""
     with _db_lock, db() as conn:
         conn.execute(
             """INSERT INTO device_state (device_id, last_seen, state, metrics, bounds)
@@ -212,7 +223,36 @@ def heartbeat(b: HeartbeatBody):
                 json.dumps(b.bounds,  ensure_ascii=False),
             ),
         )
+
+    if b.prediction is not None:
+        with _PREDICTIONS_LOCK:
+            buf = _PREDICTIONS.setdefault(
+                b.device_id, deque(maxlen=_PREDICTIONS_MAXLEN),
+            )
+            buf.append({
+                "timestamp":   b.timestamp,
+                "actual":      b.metrics,
+                "predicted":   b.prediction.get("predicted", {}),
+                "mse":         b.prediction.get("mse"),
+                "threshold":   b.prediction.get("threshold"),
+                "score_ratio": b.prediction.get("score_ratio"),
+                "is_anomaly":  b.prediction.get("is_anomaly", False),
+            })
     return None
+
+
+@app.get("/api/devices/{device_id}/predictions",
+         summary="Останні ML-прогнози (reconstruction) для графіків")
+def device_predictions(device_id: str, limit: int = Query(90, ge=1, le=500)):
+    """Повертає список з полями timestamp, actual, predicted, mse, threshold,
+    score_ratio, is_anomaly — для накладання на графіки device_detail."""
+    with _PREDICTIONS_LOCK:
+        buf = list(_PREDICTIONS.get(device_id, ()))
+    return {
+        "device_id": device_id,
+        "points":    buf[-limit:],
+        "threshold": buf[-1]["threshold"] if buf else None,
+    }
 
 
 @app.get("/api/alerts", summary="Список тривог")

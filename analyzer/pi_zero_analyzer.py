@@ -53,7 +53,19 @@ REMIND_INTERVAL_SEC = int(os.getenv("REMIND_INTERVAL_SEC", "900"))
 BOUNDS_TTL_SEC      = int(os.getenv("BOUNDS_TTL_SEC",      "300"))
 
 HERE = Path(__file__).parent
-NPZ_PATH = Path(os.getenv("AE_WEIGHTS", str(HERE / "anomaly_ae.npz")))
+
+def _resolve_npz() -> Path:
+    """Override → strict → default. Strict-варіант рідше false-positives."""
+    override = os.getenv("AE_WEIGHTS")
+    if override:
+        return Path(override)
+    for name in ("anomaly_ae_strict.npz", "anomaly_ae.npz"):
+        p = HERE / name
+        if p.exists():
+            return p
+    return HERE / "anomaly_ae.npz"  # для лога про missing у nice-форматі
+
+NPZ_PATH = _resolve_npz()
 
 # Список фіч у тому ж порядку, в якому тренувалась мережа.
 # Якщо в train_tf_model.py FEATURES змінюється — оновити і тут.
@@ -179,17 +191,13 @@ def rule_based_checks(metrics: dict, bounds: dict) -> list[str]:
 
 
 def classify(rule_anomalies: list[str], ml_anomaly: bool) -> tuple[str, list[str]]:
-    codes = list(rule_anomalies)
-    if ml_anomaly:
-        codes.insert(0, "ml_outlier")
-    if not codes:
-        return "normal", []
-    for a in rule_anomalies:
-        if a.startswith(("power_over_limit", "flow_temp_over_limit")):
-            return "anomaly", codes
-    if ml_anomaly and rule_anomalies:
+    """rule_anomalies → anomaly (вже сталось), ml_anomaly only → warning (прогноз)."""
+    if rule_anomalies:
+        codes = rule_anomalies + (["ml_outlier"] if ml_anomaly else [])
         return "anomaly", codes
-    return "warning", codes
+    if ml_anomaly:
+        return "warning", ["ml_outlier"]
+    return "normal", []
 
 
 def analyze(msg: MetricsMessage) -> StateMessage:

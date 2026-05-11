@@ -36,8 +36,26 @@ ALERTS_API   = os.getenv("ALERTS_API",   "http://localhost:5003")
 HERE = Path(__file__).parent
 
 # --- ML-моделі: автоенкодер (новий) має пріоритет, fallback на IsolationForest.
-AE_NPZ = HERE / "anomaly_ae.npz"
+# Порядок пошуку:
+#   1. явний шлях у env AE_NPZ (для override)
+#   2. anomaly_ae_strict.npz  ← стрімкіший поріг, менше false-positives
+#   3. anomaly_ae.npz         ← дефолтний (99-й перцентиль)
 AE_FEATURES = ["power_kw", "delta_t_c", "flow_temp_c", "outdoor_temp_c", "cop"]
+
+
+def _resolve_ae_path() -> Path | None:
+    override = os.getenv("AE_NPZ")
+    if override:
+        p = Path(override)
+        return p if p.exists() else None
+    for name in ("anomaly_ae_strict.npz", "anomaly_ae.npz"):
+        p = HERE / name
+        if p.exists():
+            return p
+    return None
+
+
+AE_NPZ = _resolve_ae_path()
 
 class _NumpyAE:
     """Forward pass автоенкодера на голому numpy (той самий код, що й
@@ -96,10 +114,10 @@ AE: _NumpyAE | None = None
 MODEL = None
 FEATURES = AE_FEATURES
 
-if AE_NPZ.exists():
+if AE_NPZ is not None:
     AE = _NumpyAE(AE_NPZ)
-    log.info("Loaded autoencoder weights (%d layers, threshold=%.4f)",
-             len(AE.layers), AE.threshold)
+    log.info("Loaded autoencoder %s (%d layers, threshold=%.4f)",
+             AE_NPZ.name, len(AE.layers), AE.threshold)
 else:
     bundle = joblib.load(HERE / "anomaly_model.pkl")
     MODEL = bundle["model"]
@@ -244,14 +262,19 @@ def analyze(msg: MetricsMessage) -> tuple[StateMessage, dict | None]:
         score = abs(float(MODEL.decision_function(feat)[0])) / 0.5
         explanation_ml = f"IF score={score:.3f}"
 
-    if ml_outlier and rule_anomalies:
-        state, anomalies = "anomaly", ["ml_outlier"] + rule_anomalies
-    elif rule_anomalies:
-        state, anomalies = "warning", rule_anomalies
+    # Семантика тривог:
+    #   rule_anomalies (вже сталось порушення меж онтології) → anomaly (червоне)
+    #   ml_outlier      (модель передбачає дрейф)            → warning (жовте)
+    #   обидва                                              → anomaly з міткою ML
+    if rule_anomalies:
+        anomalies = rule_anomalies + (["ml_outlier"] if ml_outlier else [])
+        state = "anomaly"
     elif ml_outlier:
-        state, anomalies = "warning", ["ml_outlier"]
+        anomalies = ["ml_outlier"]
+        state = "warning"
     else:
-        state, anomalies = "normal", []
+        anomalies = []
+        state = "normal"
 
     state_msg = StateMessage(
         device_id=msg.device_id,

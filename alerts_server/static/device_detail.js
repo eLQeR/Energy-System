@@ -1,6 +1,13 @@
 // Сторінка деталей пристрою: специфікація, межі, графіки, історія тривог.
 
 let chartPower, chartTemp;
+// Pred-датасети — спільні стилі для пунктирної ML-прогнозованої лінії.
+const PRED_STYLE = {
+  borderDash: [6, 4], borderWidth: 1.6,
+  pointRadius: 0, pointHoverRadius: 3,
+  tension: 0.25, spanGaps: true,
+  fill: false,
+};
 
 function initCharts() {
   const dsBase = { tension: 0.25, spanGaps: true, pointRadius: 2, pointHoverRadius: 5,
@@ -32,9 +39,13 @@ function initCharts() {
         { ...dsBase, label: "Потужність, кВт", data: [],
           borderColor: "#58a6ff", backgroundColor: "rgba(88,166,255,.12)",
           fill: true, yAxisID: "y" },
+        { ...PRED_STYLE, label: "Прогноз потужності (ML)", data: [],
+          borderColor: "#58a6ff", yAxisID: "y" },
         { ...dsBase, label: "COP", data: [],
           borderColor: "#3fb950", backgroundColor: "rgba(63,185,80,.08)",
           yAxisID: "y1" },
+        { ...PRED_STYLE, label: "Прогноз COP (ML)", data: [],
+          borderColor: "#3fb950", yAxisID: "y1" },
       ],
     },
     options: {
@@ -56,30 +67,48 @@ function initCharts() {
       datasets: [
         { ...dsBase, label: "Подача, °C",   data: [],
           borderColor: "#f85149", backgroundColor: "rgba(248,81,73,.10)" },
+        { ...PRED_STYLE, label: "Прогноз подачі (ML)", data: [],
+          borderColor: "#f85149" },
         { ...dsBase, label: "Зворотка, °C", data: [],
           borderColor: "#d29922", backgroundColor: "rgba(210,153,34,.08)" },
+        { ...PRED_STYLE, label: "Прогноз зворотки (ML)", data: [],
+          borderColor: "#d29922" },
       ],
     },
   });
+
 }
 
 // Зберігаємо снапшоти метрик у пам'яті, щоб мати ковзне вікно.
 const HISTORY_LEN = 60;
 const history = { ts: [], labels: [], power: [], cop: [], flow: [], ret: [] };
 
+// ML-прогнози: окремий ring-buffer від /api/devices/{id}/predictions.
+// Аналізатор шле один прогноз на кожен метрик, alerts_server тримає
+// до 90 точок in-memory.
+const mlHistory = {
+  pred_power: [], pred_cop: [], pred_flow: [], pred_ret: [],
+};
+
 function _formatLabel(iso) {
   return new Date(iso).toLocaleTimeString("uk-UA", { hour12: false }).slice(0, 5);
 }
 
 function _renderCharts() {
+  // chart-power: [actual_power, pred_power, actual_cop, pred_cop]
   chartPower.data.labels = history.labels;
   chartPower.data.datasets[0].data = history.power;
-  chartPower.data.datasets[1].data = history.cop;
+  chartPower.data.datasets[1].data = mlHistory.pred_power;
+  chartPower.data.datasets[2].data = history.cop;
+  chartPower.data.datasets[3].data = mlHistory.pred_cop;
   chartPower.update("none");
 
+  // chart-temp: [actual_flow, pred_flow, actual_ret, pred_ret]
   chartTemp.data.labels = history.labels;
   chartTemp.data.datasets[0].data = history.flow;
-  chartTemp.data.datasets[1].data = history.ret;
+  chartTemp.data.datasets[1].data = mlHistory.pred_flow;
+  chartTemp.data.datasets[2].data = history.ret;
+  chartTemp.data.datasets[3].data = mlHistory.pred_ret;
   chartTemp.update("none");
 }
 
@@ -96,6 +125,41 @@ function pushSnapshot(metrics, ts) {
     if (history[k].length > HISTORY_LEN) history[k].shift();
   }
   _renderCharts();
+}
+
+// Кладе ML-прогнози у mlHistory, вирівнюючи з кінця масиву history (обидва
+// мають однаковий 60-секундний інтервал між точками — індексне вирівнювання
+// дає прийнятну відповідність).
+function _alignPredictions(predPoints) {
+  const N = history.labels.length;
+  const M = predPoints.length;
+  const k = Math.min(N, M);
+
+  mlHistory.pred_power = new Array(N).fill(null);
+  mlHistory.pred_cop   = new Array(N).fill(null);
+  mlHistory.pred_flow  = new Array(N).fill(null);
+  mlHistory.pred_ret   = new Array(N).fill(null);
+
+  for (let i = 0; i < k; i++) {
+    const p   = predPoints[M - 1 - i];
+    const idx = N - 1 - i;
+    const pr  = p.predicted || {};
+    mlHistory.pred_power[idx] = pr.power_kw        ?? null;
+    mlHistory.pred_cop[idx]   = pr.cop             ?? null;
+    mlHistory.pred_flow[idx]  = pr.flow_temp_c     ?? null;
+    mlHistory.pred_ret[idx]   = pr.return_temp_c   ?? null;
+  }
+}
+
+async function refreshPredictions() {
+  try {
+    const data = await api(`/api/devices/${encodeURIComponent(DEVICE_ID)}/predictions?limit=90`);
+    if (data.points && data.points.length) {
+      _alignPredictions(data.points);
+    }
+  } catch (e) {
+    console.warn("predictions fetch failed:", e.message);
+  }
 }
 
 async function seedHistory() {
@@ -146,6 +210,9 @@ async function refresh() {
       pushSnapshot(d.metrics, d.last_seen);
       lastTs = d.last_seen;
     }
+
+    await refreshPredictions();
+    _renderCharts();
   } catch (err) {
     setLive(false);
     console.error(err);
@@ -241,5 +308,5 @@ function renderTimeline(alerts) {
 }
 
 initCharts();
-seedHistory().then(refresh);
+seedHistory().then(refreshPredictions).then(refresh);
 setInterval(refresh, 5000);

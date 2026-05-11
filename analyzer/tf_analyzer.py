@@ -53,8 +53,20 @@ REMIND_INTERVAL_SEC = int(os.getenv("REMIND_INTERVAL_SEC", "900"))
 BOUNDS_TTL_SEC      = int(os.getenv("BOUNDS_TTL_SEC",      "300"))
 
 HERE = Path(__file__).parent
-MODEL_PATH = Path(os.getenv("TF_MODEL", str(HERE / "anomaly_ae.tflite")))
-META_PATH  = Path(os.getenv("TF_META",  str(HERE / "anomaly_ae.meta.json")))
+
+def _resolve_pair() -> tuple[Path, Path]:
+    override_m = os.getenv("TF_MODEL")
+    override_meta = os.getenv("TF_META")
+    if override_m and override_meta:
+        return Path(override_m), Path(override_meta)
+    for name in ("anomaly_ae_strict", "anomaly_ae"):
+        m = HERE / f"{name}.tflite"
+        meta = HERE / f"{name}.meta.json"
+        if m.exists() and meta.exists():
+            return m, meta
+    return HERE / "anomaly_ae.tflite", HERE / "anomaly_ae.meta.json"
+
+MODEL_PATH, META_PATH = _resolve_pair()
 
 
 # ─── TFLite loader (tflite-runtime on Pi, tensorflow.lite on dev) ─────────────
@@ -180,21 +192,17 @@ def rule_based_checks(metrics: dict, bounds: dict) -> list[str]:
 
 
 def classify(rule_anomalies: list[str], ml_anomaly: bool) -> tuple[str, list[str]]:
-    """Об’єднує rule + ML. Серйозність визначає сам факт критичних правил."""
-    codes = list(rule_anomalies)
-    if ml_anomaly:
-        codes.insert(0, "ml_outlier")
-
-    if not codes:
-        return "normal", []
-
-    for a in rule_anomalies:
-        if a.startswith(("power_over_limit", "flow_temp_over_limit")):
-            return "anomaly", codes
-
-    if ml_anomaly and rule_anomalies:
+    """Семантика:
+        rule_anomalies (вже за межами онтології) → anomaly (червоне)
+        ml_outlier     (модель прогнозує дрейф)  → warning (жовте)
+        обидва                                  → anomaly з міткою ml_outlier
+    """
+    if rule_anomalies:
+        codes = rule_anomalies + (["ml_outlier"] if ml_anomaly else [])
         return "anomaly", codes
-    return "warning", codes
+    if ml_anomaly:
+        return "warning", ["ml_outlier"]
+    return "normal", []
 
 
 def analyze(msg: MetricsMessage) -> StateMessage:
