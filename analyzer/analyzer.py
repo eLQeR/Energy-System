@@ -34,9 +34,77 @@ ONTOLOGY_API = os.getenv("ONTOLOGY_API", "http://localhost:5000")
 ALERTS_API   = os.getenv("ALERTS_API",   "http://localhost:5003")
 
 HERE = Path(__file__).parent
-bundle = joblib.load(HERE / "anomaly_model.pkl")
-MODEL = bundle["model"]
-FEATURES = bundle["features"]
+
+# --- ML-моделі: автоенкодер (новий) має пріоритет, fallback на IsolationForest.
+AE_NPZ = HERE / "anomaly_ae.npz"
+AE_FEATURES = ["power_kw", "delta_t_c", "flow_temp_c", "outdoor_temp_c", "cop"]
+
+class _NumpyAE:
+    """Forward pass автоенкодера на голому numpy (той самий код, що й
+    pi_zero_analyzer — щоб демонструвати: модель ОДНА, рантайми різні)."""
+
+    def __init__(self, npz_path: Path):
+        data = np.load(npz_path)
+        self.mean      = data["mean"].astype(np.float32)
+        self.std       = data["std"].astype(np.float32)
+        self.threshold = float(data["threshold"])
+        layer_keys = sorted(k for k in data.files
+                             if k.endswith("_W") and not k.startswith("__"))
+        self.layers = [(data[k].astype(np.float32),
+                        data[k[:-2] + "_b"].astype(np.float32))
+                       for k in layer_keys]
+
+    def _vec(self, m: dict) -> np.ndarray:
+        flow = m.get("flow_temp_c") or 0.0
+        ret  = m.get("return_temp_c") or 0.0
+        cop  = m.get("cop") if m.get("cop") is not None else 3.0
+        values = {
+            "power_kw":       m.get("power_kw") or 0.0,
+            "delta_t_c":      flow - ret,
+            "flow_temp_c":    flow,
+            "outdoor_temp_c": m.get("outdoor_temp_c") or 0.0,
+            "cop":            cop,
+        }
+        return np.array([values[f] for f in AE_FEATURES], dtype=np.float32)
+
+    def predict(self, m: dict) -> dict:
+        """→ {is_anomaly, mse, threshold, predicted{}, score_ratio}.
+        predicted — у фізичних одиницях (denormalized)."""
+        x_raw = self._vec(m)
+        x = ((x_raw - self.mean) / self.std).reshape(1, -1)
+        h = x
+        for i, (W, b) in enumerate(self.layers):
+            h = h @ W + b
+            if i < len(self.layers) - 1:
+                np.maximum(h, 0.0, out=h)
+        recon_norm = h.reshape(-1)
+        mse = float(np.mean((x.reshape(-1) - recon_norm) ** 2))
+        recon = recon_norm * self.std + self.mean
+        predicted = {f: float(recon[i]) for i, f in enumerate(AE_FEATURES)}
+        # Збудуємо predicted_return для зручності UI
+        predicted["return_temp_c"] = predicted["flow_temp_c"] - predicted["delta_t_c"]
+        return {
+            "is_anomaly":  mse > self.threshold,
+            "mse":         mse,
+            "threshold":   self.threshold,
+            "predicted":   predicted,
+            "score_ratio": mse / max(self.threshold, 1e-9),
+        }
+
+
+AE: _NumpyAE | None = None
+MODEL = None
+FEATURES = AE_FEATURES
+
+if AE_NPZ.exists():
+    AE = _NumpyAE(AE_NPZ)
+    log.info("Loaded autoencoder weights (%d layers, threshold=%.4f)",
+             len(AE.layers), AE.threshold)
+else:
+    bundle = joblib.load(HERE / "anomaly_model.pkl")
+    MODEL = bundle["model"]
+    FEATURES = bundle["features"]
+    log.info("Autoencoder not found — falling back to IsolationForest")
 
 @dataclass
 class DeviceStatus:
@@ -71,7 +139,7 @@ def get_bounds(device_id: str) -> dict:
     return BOUNDS_CACHE[device_id]
 
 LAST_REMIND: dict[str, float] = {}
-REMIND_INTERVAL_SEC = int(os.getenv("REMIND_INTERVAL_SEC", "300"))
+REMIND_INTERVAL_SEC = int(os.getenv("REMIND_INTERVAL_SEC", "900"))
 
 
 def _should_remind(device_id: str) -> bool:
@@ -80,6 +148,24 @@ def _should_remind(device_id: str) -> bool:
         LAST_REMIND[device_id] = now
         return True
     return False
+
+
+def send_heartbeat(state: StateMessage, metrics_dump: dict, bounds: dict,
+                    prediction: dict | None = None) -> None:
+    """Оновлює last_seen + актуальні метрики + ML-прогноз у alerts_server."""
+    body = {
+        "device_id": state.device_id,
+        "timestamp": state.timestamp,
+        "state":     state.state,
+        "metrics":   metrics_dump,
+        "bounds":    bounds,
+    }
+    if prediction is not None:
+        body["prediction"] = prediction
+    try:
+        requests.post(f"{ALERTS_API}/api/heartbeat", json=body, timeout=2)
+    except requests.RequestException as exc:
+        log.debug("heartbeat dropped for %s (%s)", state.device_id, exc)
 
 
 def forward_alert(state: StateMessage, metrics_dump: dict, bounds: dict) -> None:
@@ -123,43 +209,59 @@ def rule_based_checks(metrics: dict, bounds: dict) -> list[str]:
     return anomalies
 
 
-def analyze(msg: MetricsMessage) -> StateMessage:
+def analyze(msg: MetricsMessage) -> tuple[StateMessage, dict | None]:
+    """→ (StateMessage, prediction_dict | None). Prediction містить
+    `mse`, `threshold`, `predicted` (reconstructed values in physical units)
+    і `score_ratio`. None коли AE недоступний (fallback на IsolationForest)."""
     m = msg.metrics
-    feat = np.array([[
-        m.power_kw,
-        m.flow_temp_c - m.return_temp_c,
-        m.flow_temp_c,
-        m.outdoor_temp_c if m.outdoor_temp_c is not None else 0.0,
-        m.cop if m.cop is not None else 3.5,
-    ]])
-    prediction = int(MODEL.predict(feat)[0])     
-    score = float(MODEL.decision_function(feat)[0])  
+    metrics_dump = m.model_dump()
 
     bounds = get_bounds(msg.device_id)
-    rule_anomalies = rule_based_checks(m.model_dump(), bounds)
+    rule_anomalies = rule_based_checks(metrics_dump, bounds)
 
-    if prediction == -1 and rule_anomalies:
+    ml_outlier = False
+    score = 0.0
+    prediction: dict | None = None
+    explanation_ml = "ML disabled"
+
+    if AE is not None:
+        prediction = AE.predict(metrics_dump)
+        ml_outlier = prediction["is_anomaly"]
+        score = prediction["score_ratio"]
+        explanation_ml = (
+            f"AE mse={prediction['mse']:.4f} "
+            f"ratio={prediction['score_ratio']:.2f}×"
+        )
+    elif MODEL is not None:
+        feat = np.array([[
+            m.power_kw,
+            m.flow_temp_c - m.return_temp_c,
+            m.flow_temp_c,
+            m.outdoor_temp_c if m.outdoor_temp_c is not None else 0.0,
+            m.cop if m.cop is not None else 3.5,
+        ]])
+        ml_outlier = int(MODEL.predict(feat)[0]) == -1
+        score = abs(float(MODEL.decision_function(feat)[0])) / 0.5
+        explanation_ml = f"IF score={score:.3f}"
+
+    if ml_outlier and rule_anomalies:
         state, anomalies = "anomaly", ["ml_outlier"] + rule_anomalies
     elif rule_anomalies:
         state, anomalies = "warning", rule_anomalies
-    elif prediction == -1:
+    elif ml_outlier:
         state, anomalies = "warning", ["ml_outlier"]
     else:
         state, anomalies = "normal", []
 
-    explanation = (
-        f"ML score={score:.3f}; "
-        f"rules matched: {len(rule_anomalies)}"
-    )
-
-    return StateMessage(
+    state_msg = StateMessage(
         device_id=msg.device_id,
         timestamp=utcnow_iso(),
         state=state,
         anomalies=anomalies,
-        confidence=min(1.0, abs(score) / 0.5),
-        explanation=explanation,
+        confidence=min(1.0, abs(score)),
+        explanation=f"{explanation_ml}; rules matched: {len(rule_anomalies)}",
     )
+    return state_msg, prediction
 
 def on_message(client: mqtt.Client, _userdata, mqtt_msg: mqtt.MQTTMessage) -> None:
     try:
@@ -168,13 +270,17 @@ def on_message(client: mqtt.Client, _userdata, mqtt_msg: mqtt.MQTTMessage) -> No
         log.exception("Bad metrics payload on %s", mqtt_msg.topic)
         return
 
-    state = analyze(incoming)
+    state, prediction = analyze(incoming)
     out_topic = TOPIC_STATE.format(device_id=state.device_id)
     client.publish(out_topic, state.model_dump_json(), qos=0)
 
+    bounds = get_bounds(state.device_id)
+    metrics_dump = incoming.metrics.model_dump()
+    send_heartbeat(state, metrics_dump, bounds, prediction)
+
     with STATE_LOCK:
         status = STATE_CACHE.setdefault(state.device_id, DeviceStatus(state.device_id))
-        status.last_metrics = incoming.metrics.model_dump()
+        status.last_metrics = metrics_dump
         status.last_state = state.model_dump()
         status.updated_at = state.timestamp
 
@@ -187,7 +293,7 @@ def on_message(client: mqtt.Client, _userdata, mqtt_msg: mqtt.MQTTMessage) -> No
 
     should_forward = is_problem and (state_changed or _should_remind(state.device_id))
     if should_forward:
-        forward_alert(state, incoming.metrics.model_dump(), get_bounds(state.device_id))
+        forward_alert(state, metrics_dump, bounds)
 
     log.info(
         "%s → %s (conf=%.2f) anomalies=%s%s",

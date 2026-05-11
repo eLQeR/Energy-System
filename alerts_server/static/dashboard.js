@@ -79,10 +79,20 @@ function renderDevices(devices) {
   root.innerHTML = devices.map(d => deviceCard(d)).join("");
 }
 
+// Свіжість метрик: ≤60 с тому = насос активно публікує, інакше offline.
+// Backend позначає stale > 10 хв; тут жорсткіший поріг для UI-індикації.
+const LIVE_WINDOW_SEC = 60;
+function liveness(lastSeen) {
+  if (!lastSeen) return "offline";
+  const ageSec = (Date.now() - new Date(lastSeen).getTime()) / 1000;
+  return ageSec <= LIVE_WINDOW_SEC ? "live" : "offline";
+}
+
 function deviceCard(d) {
   const m = d.metrics || {};
   const b = d.bounds  || {};
   const stale = d.stale ? "stale" : (d.current_state || "unknown");
+  const liveClass = liveness(d.last_seen);
 
   const bar = (label, val, max, lowGood = false) => {
     if (val == null || max == null) return "";
@@ -111,7 +121,7 @@ function deviceCard(d) {
   };
 
   return `
-    <div class="device-card" onclick="location.href='/device/${esc(d.id)}'">
+    <div class="device-card ${liveClass}" onclick="location.href='/device/${esc(d.id)}'">
       <div class="header">
         <div>
           <div class="title">${esc(d.label || d.id)}</div>
@@ -136,8 +146,6 @@ function deviceCard(d) {
           <div class="v">${m.cop != null ? m.cop.toFixed(2) : '—'}</div>
           <div class="k">Режим</div>
           <div class="v">${esc(m.mode || '—')}</div>
-          <div class="k">Надворі</div>
-          <div class="v">${m.outdoor_temp_c != null ? m.outdoor_temp_c.toFixed(1) + ' °C' : '—'}</div>
         </div>
         <div style="display:flex;flex-direction:column;gap:8px;margin-top:6px;">
           ${bar("Потужність", m.power_kw, b.max_power_kw)}

@@ -21,8 +21,26 @@ def _esc(s: str) -> str:
     return s.replace("\\", "\\\\").replace('"', '\\"')
 
 
+def _build_label(device_id: str, p: HeatPumpProfile) -> str:
+    """Без rdfs:label SPARQL-запит /devices не побачить пристрій. Складаємо
+    людиночитану назву з найбільш конкретних доступних полів."""
+    parts: list[str] = []
+    if p.manufacturer:
+        parts.append(p.manufacturer)
+    if p.model_series:
+        parts.append(p.model_series)
+    elif p.model_variants:
+        parts.append(p.model_variants[0])
+    if not parts:
+        return device_id
+    return " ".join(parts) + f" ({device_id})"
+
+
 def to_turtle(device_id: str, p: HeatPumpProfile) -> str:
-    triples: list[str] = [f"lab:{device_id} a lab:AirToWaterHP"]
+    triples: list[str] = [
+        f"lab:{device_id} a lab:AirToWaterHP",
+        f'    rdfs:label "{_esc(_build_label(device_id, p))}"',
+    ]
     add = lambda pred, val: triples.append(f"    {pred} {val}")
 
     if p.manufacturer:   add("lab:manufacturer", f'"{_esc(p.manufacturer)}"')

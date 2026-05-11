@@ -12,8 +12,8 @@ from pathlib import Path
 from typing import Literal
 
 import requests
-from fastapi import Body, FastAPI, HTTPException, Query, Request
-from fastapi.responses import HTMLResponse
+from fastapi import Body, FastAPI, File, Form, HTTPException, Query, Request, UploadFile
+from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from influxdb_client import InfluxDBClient
@@ -102,6 +102,14 @@ class AcknowledgeBody(BaseModel):
     user: str = "engineer"
 
 
+class HeartbeatBody(BaseModel):
+    device_id: str
+    timestamp: str
+    state: str            # normal | warning | anomaly | unknown
+    metrics: dict = {}
+    bounds:  dict = {}
+
+
 def _row_to_alert(row: sqlite3.Row) -> dict:
     d = dict(row)
     d["anomaly_codes"]    = json.loads(d["anomaly_codes"])
@@ -182,6 +190,29 @@ def create_alert(payload: AlertPayload):
     log.info("ALERT [%d] %s severity=%s codes=%s",
              alert_id, payload.device_id, payload.severity, payload.anomaly_codes)
     return {"id": alert_id, "status": "created"}
+
+
+@app.post("/api/heartbeat", status_code=204,
+          summary="Оновити last_seen / metrics пристрою без створення алерту")
+def heartbeat(b: HeartbeatBody):
+    """Кожен метрик, що проходить через analyzer, оновлює тут last_seen.
+    Без цього UI бачить «онлайн» тільки під час алертів."""
+    with _db_lock, db() as conn:
+        conn.execute(
+            """INSERT INTO device_state (device_id, last_seen, state, metrics, bounds)
+               VALUES (?, ?, ?, ?, ?)
+               ON CONFLICT(device_id) DO UPDATE SET
+                 last_seen=excluded.last_seen,
+                 state=excluded.state,
+                 metrics=excluded.metrics,
+                 bounds=excluded.bounds""",
+            (
+                b.device_id, b.timestamp, b.state,
+                json.dumps(b.metrics, ensure_ascii=False),
+                json.dumps(b.bounds,  ensure_ascii=False),
+            ),
+        )
+    return None
 
 
 @app.get("/api/alerts", summary="Список тривог")
@@ -321,15 +352,14 @@ def get_device(device_id: str):
          summary="Історія метрик з InfluxDB для графіків (за замовчуванням 60 хв)")
 def device_history(device_id: str, minutes: int = Query(60, ge=1, le=1440)):
     """Повертає рівномірно дискретизовані точки для графіків:
-    [{ timestamp, power_kw, cop, flow_temp_c, return_temp_c, outdoor_temp_c }, …]"""
+    [{ timestamp, power_kw, cop, flow_temp_c, return_temp_c }, …]"""
     flux = f"""
         from(bucket: "{INFLUX_BUCKET}")
           |> range(start: -{minutes}m)
           |> filter(fn: (r) => r["_measurement"] == "equipment_metrics")
           |> filter(fn: (r) => r["device_id"] == "{device_id}")
           |> filter(fn: (r) => r["_field"] == "power_kw" or r["_field"] == "cop"
-                            or r["_field"] == "flow_temp_c" or r["_field"] == "return_temp_c"
-                            or r["_field"] == "outdoor_temp_c")
+                            or r["_field"] == "flow_temp_c" or r["_field"] == "return_temp_c")
           |> aggregateWindow(every: 1m, fn: mean, createEmpty: false)
           |> pivot(rowKey: ["_time"], columnKey: ["_field"], valueColumn: "_value")
           |> sort(columns: ["_time"])
@@ -351,7 +381,6 @@ def device_history(device_id: str, minutes: int = Query(60, ge=1, le=1440)):
                 "cop":            v.get("cop"),
                 "flow_temp_c":    v.get("flow_temp_c"),
                 "return_temp_c":  v.get("return_temp_c"),
-                "outdoor_temp_c": v.get("outdoor_temp_c"),
             })
     return {"device_id": device_id, "minutes": minutes, "points": points}
 
@@ -396,6 +425,59 @@ def device_detail(request: Request, device_id: str):
     return templates.TemplateResponse(
         request, "device_detail.html", {"device_id": device_id},
     )
+
+
+@app.get("/ontology", response_class=HTMLResponse, include_in_schema=False)
+def ontology_page(request: Request):
+    return templates.TemplateResponse(request, "ontology.html")
+
+
+@app.get("/upload", response_class=HTMLResponse, include_in_schema=False)
+def upload_page(request: Request):
+    return templates.TemplateResponse(request, "upload.html")
+
+
+# ─── Ontology / Upload proxies (UI lives here, processing in ontology_api) ────
+
+@app.get("/api/ontology/graph",
+         summary="Граф онтології (вузли + ребра) для візуалізації")
+def ontology_graph(device: str | None = None):
+    try:
+        params = {"device": device} if device else None
+        r = requests.get(f"{ONTOLOGY_API}/graph", params=params, timeout=10)
+        r.raise_for_status()
+        return r.json()
+    except Exception as exc:
+        log.warning("Ontology graph fetch failed: %s", exc)
+        raise HTTPException(502, f"Ontology API недоступний: {exc}")
+
+
+@app.post("/api/upload", summary="Завантажити PDF паспорт обладнання в онтологію")
+async def upload_proxy(
+    pdf: UploadFile = File(...),
+    device_id: str = Form(...),
+    model: str = Form("claude-opus-4-7"),
+):
+    """Forward the multipart upload to ontology_api which runs the LLM pipeline."""
+    try:
+        content = await pdf.read()
+        files = {"pdf": (pdf.filename, content, pdf.content_type or "application/pdf")}
+        data = {"device_id": device_id, "model": model}
+        r = requests.post(
+            f"{ONTOLOGY_API}/upload",
+            files=files, data=data,
+            headers={"Accept": "application/json"},
+            timeout=600,
+        )
+    except Exception as exc:
+        log.exception("Upload proxy failed")
+        raise HTTPException(502, f"Помилка зв'язку з онтологічним API: {exc}")
+
+    try:
+        body = r.json()
+    except ValueError:
+        body = {"error": r.text[:500] or "Невідома помилка"}
+    return JSONResponse(body, status_code=r.status_code)
 
 
 @app.get("/health", summary="Liveness-перевірка")

@@ -34,7 +34,7 @@ MQTT_PORT           = int(os.getenv("MQTT_PORT", "1883"))
 ONTOLOGY_API        = os.getenv("ONTOLOGY_API",  "http://localhost:5000")
 ALERTS_API          = os.getenv("ALERTS_API",    "http://localhost:5003")
 #Інтервал повторного нагадування про проблему
-REMIND_INTERVAL_SEC = int(os.getenv("REMIND_INTERVAL_SEC", "300"))
+REMIND_INTERVAL_SEC = int(os.getenv("REMIND_INTERVAL_SEC", "900"))
 #Час кешування меж пристрою
 BOUNDS_TTL_SEC      = int(os.getenv("BOUNDS_TTL_SEC",      "300"))
 
@@ -124,6 +124,25 @@ def _should_remind(device_id: str) -> bool:
         return True
     return False
 
+def send_heartbeat(state: StateMessage, metrics_dump: dict, bounds: dict) -> None:
+    """Оновлює last_seen у alerts_server на КОЖЕН метрик. Інакше UI бачить
+    «онлайн» лише під час алертів."""
+    try:
+        requests.post(
+            f"{ALERTS_API}/api/heartbeat",
+            json={
+                "device_id": state.device_id,
+                "timestamp": state.timestamp,
+                "state":     state.state,
+                "metrics":   metrics_dump,
+                "bounds":    bounds,
+            },
+            timeout=2,
+        )
+    except requests.RequestException as exc:
+        log.debug("heartbeat dropped for %s (%s)", state.device_id, exc)
+
+
 #Функція відправляє alert на центральний сервер
 def forward_alert(state: StateMessage, metrics_dump: dict, bounds: dict) -> None:
     if state.state not in ("warning", "anomaly"):
@@ -164,6 +183,10 @@ def on_message(client: mqtt.Client, _userdata, mqtt_msg: mqtt.MQTTMessage) -> No
     #Публікує стан у MQTT
     client.publish(out_topic, state.model_dump_json(), qos=0)
 
+    bounds = get_bounds(state.device_id)
+    metrics_dump = incoming.metrics.model_dump()
+    send_heartbeat(state, metrics_dump, bounds)
+
     prev = LAST_STATE.get(state.device_id, "normal")
     LAST_STATE[state.device_id] = state.state
     state_changed = prev != state.state
@@ -171,7 +194,7 @@ def on_message(client: mqtt.Client, _userdata, mqtt_msg: mqtt.MQTTMessage) -> No
 
     should_forward = is_problem and (state_changed or _should_remind(state.device_id))
     if should_forward:
-        forward_alert(state, incoming.metrics.model_dump(), get_bounds(state.device_id))
+        forward_alert(state, metrics_dump, bounds)
 
     log.info("%s → %s anomalies=%s%s",
              state.device_id, state.state, state.anomalies,

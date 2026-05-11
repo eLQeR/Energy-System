@@ -251,3 +251,25 @@ lab:puhz_hw140y a lab:AirToWaterHP ;
 lab:puhz_hw140y_compressor      a lab:Compressor ; rdfs:label "Compressor (PUHZ-HW140Y)" .
 lab:puhz_hw140y_evaporator      a lab:Evaporator ; rdfs:label "Air-source evaporator (PUHZ-HW140Y)" .
 lab:puhz_hw140y_expansion_valve a lab:Component  ; rdfs:label "Expansion valve (PUHZ-HW140Y)" .
+
+
+# === auto-extracted from upload: test ===
+@prefix lab:  <http://lab.example/ontology#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd:  <http://www.w3.org/2001/XMLSchema#> .
+
+lab:test a lab:AirToWaterHP ;
+    lab:manufacturer "Mitsubishi Electric" ;
+    lab:modelVariant "W50" ;
+    lab:modelVariant "W85" ;
+    lab:modelVariant "W112" ;
+    lab:modelVariant "HW112" ;
+    lab:modelVariant "HW140" ;
+    lab:modelVariant "W50VHA(2)" ;
+    lab:modelVariant "W85VHA(2)" ;
+    lab:modelVariant "W112VHA" ;
+    lab:modelVariant "HW112YHA(2)" ;
+    lab:modelVariant "HW140Y/VHA(2)" ;
+    lab:powerSupplyV "230"^^xsd:integer ;
+    lab:hasOperatingMode lab:heating_mode ;
+    lab:hasOperatingMode lab:cooling_mode .

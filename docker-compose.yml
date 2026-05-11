@@ -72,10 +72,16 @@ services:
         condition: service_completed_successfully
     environment:
       FUSEKI_URL: http://fuseki:3030/lab
+      # Передаємо з хоста, якщо є — інакше PDF→онтологія йде через CLI.
+      ANTHROPIC_API_KEY:    ${ANTHROPIC_API_KEY:-}
+      ANTHROPIC_AUTH_TOKEN: ${ANTHROPIC_AUTH_TOKEN:-}
     ports:
       - "5002:5000"
     volumes:
       - ./ontology:/app/ontology
+      # Persistent auth для `claude` CLI всередині контейнера.
+      # Авторизація: docker compose exec ontology_api claude /login
+      - claude_config:/root/.claude
     command: python3 ontology/ontology_api.py
     restart: unless-stopped
 
@@ -170,8 +176,10 @@ services:
     profiles: ["tools"]
     volumes:
       - ./ontology:/app/ontology
+      - claude_config:/root/.claude
     environment:
-      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      ANTHROPIC_API_KEY:    ${ANTHROPIC_API_KEY:-}
+      ANTHROPIC_AUTH_TOKEN: ${ANTHROPIC_AUTH_TOKEN:-}
     entrypoint: ["python3", "-m", "ontology.pdf_to_ontology.cli"]
 
 volumes:
@@ -180,3 +188,4 @@ volumes:
   alerts_data:
   fuseki_data:
   grafana_data:
+  claude_config:

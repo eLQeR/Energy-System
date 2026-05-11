@@ -58,8 +58,6 @@ function initCharts() {
           borderColor: "#f85149", backgroundColor: "rgba(248,81,73,.10)" },
         { ...dsBase, label: "Зворотка, °C", data: [],
           borderColor: "#d29922", backgroundColor: "rgba(210,153,34,.08)" },
-        { ...dsBase, label: "Надворі, °C",  data: [],
-          borderColor: "#79c0ff", backgroundColor: "rgba(121,192,255,.08)" },
       ],
     },
   });
@@ -67,7 +65,7 @@ function initCharts() {
 
 // Зберігаємо снапшоти метрик у пам'яті, щоб мати ковзне вікно.
 const HISTORY_LEN = 60;
-const history = { ts: [], labels: [], power: [], cop: [], flow: [], ret: [], outdoor: [] };
+const history = { ts: [], labels: [], power: [], cop: [], flow: [], ret: [] };
 
 function _formatLabel(iso) {
   return new Date(iso).toLocaleTimeString("uk-UA", { hour12: false }).slice(0, 5);
@@ -82,7 +80,6 @@ function _renderCharts() {
   chartTemp.data.labels = history.labels;
   chartTemp.data.datasets[0].data = history.flow;
   chartTemp.data.datasets[1].data = history.ret;
-  chartTemp.data.datasets[2].data = history.outdoor;
   chartTemp.update("none");
 }
 
@@ -95,7 +92,6 @@ function pushSnapshot(metrics, ts) {
   history.cop.push(metrics.cop          ?? null);
   history.flow.push(metrics.flow_temp_c ?? null);
   history.ret.push(metrics.return_temp_c ?? null);
-  history.outdoor.push(metrics.outdoor_temp_c ?? null);
   for (const k of Object.keys(history)) {
     if (history[k].length > HISTORY_LEN) history[k].shift();
   }
@@ -108,7 +104,7 @@ async function seedHistory() {
     if (!data.points || !data.points.length) return;
     history.ts.length = 0; history.labels.length = 0;
     history.power.length = 0; history.cop.length = 0;
-    history.flow.length = 0; history.ret.length = 0; history.outdoor.length = 0;
+    history.flow.length = 0; history.ret.length = 0;
     for (const p of data.points) {
       history.ts.push(p.timestamp);
       history.labels.push(_formatLabel(p.timestamp));
@@ -116,7 +112,6 @@ async function seedHistory() {
       history.cop.push(p.cop              ?? null);
       history.flow.push(p.flow_temp_c     ?? null);
       history.ret.push(p.return_temp_c    ?? null);
-      history.outdoor.push(p.outdoor_temp_c ?? null);
     }
     _renderCharts();
   } catch (e) {
@@ -168,7 +163,6 @@ function renderMetrics(m) {
     <div class="k">Енергія</div>   <div class="v">${(m.energy_kwh ?? 0).toFixed(2)} кВт·год</div>
     <div class="k">Подача</div>    <div class="v">${(m.flow_temp_c ?? 0).toFixed(1)} °C</div>
     <div class="k">Зворотка</div>  <div class="v">${(m.return_temp_c ?? 0).toFixed(1)} °C</div>
-    <div class="k">Надворі</div>   <div class="v">${m.outdoor_temp_c != null ? m.outdoor_temp_c.toFixed(1) + ' °C' : '—'}</div>
     <div class="k">COP</div>       <div class="v">${m.cop != null ? m.cop.toFixed(2) : '—'}</div>
     <div class="k">Режим</div>     <div class="v">${esc(m.mode || '—')}</div>`;
 }

@@ -110,6 +110,17 @@ setInterval(() => {
   if (c) c.textContent = new Date().toLocaleTimeString("uk-UA", { hour12: false });
 }, 1000);
 
+(() => {
+  const path = location.pathname;
+  let key = "dashboard";
+  if (path.startsWith("/ontology")) key = "ontology";
+  else if (path.startsWith("/upload")) key = "upload";
+  else if (path.startsWith("/device")) key = "dashboard";
+  document.querySelectorAll(".topnav a[data-nav]").forEach((a) => {
+    if (a.dataset.nav === key) a.classList.add("active");
+  });
+})();
+
 function esc(s) {
   return String(s ?? "").replace(/[&<>"']/g, (m) =>
     ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"})[m]);

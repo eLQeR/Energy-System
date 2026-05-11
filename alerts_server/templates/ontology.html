@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% block title %}Онтологія обладнання — EnergyLab{% endblock %}
+{% block content %}
+
+<div class="section-header" style="margin-bottom:18px;">
+  <div>
+    <h1 style="font-size:22px;">Граф онтології обладнання</h1>
+    <div style="color:var(--text-muted);font-size:13px;margin-top:4px;">
+      Інтерактивна візуалізація RDF-тріплетів з Fuseki. Виберіть модель,
+      щоб обмежити граф одним пристроєм та його компонентами.
+    </div>
+  </div>
+</div>
+
+<div class="panel" style="margin-bottom:16px;">
+  <div style="display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap;">
+    <div style="flex:1;min-width:240px;">
+      <label for="device-select"
+             style="display:block;font-size:12px;color:var(--text-muted);
+                    text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px;">
+        Обладнання / модель
+      </label>
+      <select id="device-select"
+              style="width:100%;padding:8px 10px;border:1px solid var(--border);
+                     border-radius:var(--radius-sm);background:var(--bg-card);
+                     font-size:14px;color:var(--text);">
+        <option value="">— Уся онтологія —</option>
+      </select>
+    </div>
+    <div>
+      <button class="primary" id="btn-reload">Оновити</button>
+      <button id="btn-fit" style="margin-left:6px;">Вписати у вікно</button>
+    </div>
+    <div id="graph-stats" style="color:var(--text-dim);font-size:12px;
+                                  margin-left:auto;font-variant-numeric:tabular-nums;"></div>
+  </div>
+</div>
+
+<div class="panel" style="padding:0;overflow:hidden;">
+  <div id="ontology-graph" style="height:calc(100vh - 280px);min-height:520px;
+                                    background:var(--bg-elevated);"></div>
+</div>
+
+<div class="panel" style="margin-top:14px;">
+  <h3>Легенда</h3>
+  <div id="legend" style="display:flex;flex-wrap:wrap;gap:14px;font-size:12px;
+                          color:var(--text-muted);"></div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script src="https://unpkg.com/vis-network@9.1.9/standalone/umd/vis-network.min.js"></script>
+<script src="/static/ontology.js"></script>
+{% endblock %}

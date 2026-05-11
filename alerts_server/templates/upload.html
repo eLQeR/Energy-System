@@ -1,0 +1,147 @@
+{% extends "base.html" %}
+{% block title %}Завантаження паспортів — EnergyLab{% endblock %}
+{% block content %}
+
+<div class="section-header" style="margin-bottom:18px;">
+  <div>
+    <h1 style="font-size:22px;">PDF → Онтологія</h1>
+    <div style="color:var(--text-muted);font-size:13px;margin-top:4px;">
+      Завантажте паспорт обладнання у форматі PDF. ШІ-конвеєр витягне
+      характеристики, додасть тріплети у <code>equipment.ttl</code> та
+      перезавантажить Fuseki.
+    </div>
+  </div>
+</div>
+
+<div class="upload-grid">
+  <div class="panel">
+    <form id="upload-form">
+      <label class="field-label" for="pdf">PDF-файл</label>
+      <input id="pdf" type="file" name="pdf" accept="application/pdf,.pdf" required>
+
+      <label class="field-label" for="device_id">
+        Device ID
+        <span class="hint">(латиниця/цифри/_/-, починається з літери, напр. <code>ehst20</code>)</span>
+      </label>
+      <input id="device_id" type="text" name="device_id"
+             pattern="[a-zA-Z][a-zA-Z0-9_\-]*"
+             placeholder="ehst20" required>
+
+      <label class="field-label" for="model">Модель LLM</label>
+      <select id="model" name="model">
+        <option value="claude-haiku-4-5">claude-haiku-4-5 — швидко, дешевше</option>
+        <option value="claude-opus-4-7" selected>claude-opus-4-7 — точніше</option>
+      </select>
+
+      <div style="margin-top:18px;display:flex;gap:10px;align-items:center;">
+        <button type="submit" class="primary" id="submit-btn">Обробити</button>
+        <span id="upload-status" style="font-size:12px;color:var(--text-muted);"></span>
+      </div>
+    </form>
+  </div>
+
+  <div class="panel">
+    <h3>Як це працює</h3>
+    <ol style="font-size:12px;color:var(--text-muted);padding-left:18px;line-height:1.7;">
+      <li>PDF розбивається на сторінки, лише сторінки зі специфікаціями
+          відбираються (≤30).</li>
+      <li>Відфільтрований текст відправляється до LLM з примусовим викликом
+          інструменту <code>record_specs</code>.</li>
+      <li>Структурований профіль валідує Pydantic-схема та перетворюється
+          у Turtle.</li>
+      <li>Тріплети дописуються в <code>equipment.ttl</code>, після чого
+          датасет перезавантажується у Fuseki.</li>
+      <li>Новий пристрій одразу з’являється на сторінці
+          <a href="/ontology">«Онтологія»</a> та на головній панелі.</li>
+    </ol>
+  </div>
+</div>
+
+<div id="result" class="upload-result" style="display:none;margin-top:18px;"></div>
+
+{% endblock %}
+
+{% block scripts %}
+<style>
+  .upload-grid {
+    display: grid; grid-template-columns: 1.4fr 1fr; gap: 16px;
+  }
+  @media (max-width: 900px) { .upload-grid { grid-template-columns: 1fr; } }
+  .field-label {
+    display: block; margin: 14px 0 6px; font-size: 12px; font-weight: 600;
+    color: var(--text-muted); text-transform: uppercase; letter-spacing: .05em;
+  }
+  .field-label:first-of-type { margin-top: 0; }
+  .field-label .hint { font-weight: 400; text-transform: none; letter-spacing: 0;
+                       color: var(--text-dim); margin-left: 6px; }
+  #upload-form input[type="file"],
+  #upload-form input[type="text"],
+  #upload-form select {
+    width: 100%; padding: 8px 10px; box-sizing: border-box;
+    border: 1px solid var(--border); border-radius: var(--radius-sm);
+    background: var(--bg-card); color: var(--text); font-size: 14px;
+    font-family: inherit;
+  }
+  #upload-form input[type="file"] { padding: 6px; }
+  .upload-result pre {
+    background: var(--bg-elevated); padding: 12px; overflow-x: auto;
+    border-radius: var(--radius-sm); font-size: 12px;
+    border: 1px solid var(--border-soft);
+    max-height: 320px;
+  }
+  .upload-result .ok {
+    background: rgba(63,185,80,.10); border: 1px solid var(--normal);
+    color: var(--normal); padding: 12px 14px; border-radius: var(--radius-sm);
+    margin-bottom: 14px;
+  }
+  .upload-result .err {
+    background: rgba(248,81,73,.10); border: 1px solid var(--anomaly);
+    color: var(--anomaly); padding: 12px 14px; border-radius: var(--radius-sm);
+  }
+</style>
+<script>
+const form    = document.getElementById("upload-form");
+const status_ = document.getElementById("upload-status");
+const result  = document.getElementById("result");
+const btn     = document.getElementById("submit-btn");
+
+form.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  result.style.display = "none";
+  result.innerHTML = "";
+  btn.disabled = true;
+  status_.textContent = "Обробка… це може зайняти 30–120 секунд.";
+
+  const data = new FormData(form);
+  try {
+    const resp = await fetch("/api/upload", { method: "POST", body: data });
+    const body = await resp.json().catch(() => ({}));
+    if (!resp.ok) throw new Error(body.error || body.detail || resp.statusText);
+
+    const triples = body.turtle ? body.turtle.split("\n").filter(Boolean).length : 0;
+    result.innerHTML = `
+      <div class="ok">
+        Готово. Додано <strong>${triples}</strong> рядків у
+        <code>equipment.ttl</code>, Fuseki перезавантажено. Пристрій
+        <code>${esc(body.device_id || "")}</code> доступний у
+        <a href="/ontology">графі онтології</a>.
+      </div>
+      <h3>Витягнутий профіль</h3>
+      <pre>${esc(JSON.stringify(body.profile, null, 2))}</pre>
+      <h3>Turtle</h3>
+      <pre>${esc(body.turtle || "")}</pre>
+    `;
+    result.style.display = "block";
+    status_.textContent = "";
+    toast("Завантаження успішне", "success");
+  } catch (err) {
+    result.innerHTML = `<div class="err">Помилка: ${esc(err.message)}</div>`;
+    result.style.display = "block";
+    status_.textContent = "";
+    toast("Помилка: " + err.message, "danger");
+  } finally {
+    btn.disabled = false;
+  }
+});
+</script>
+{% endblock %}

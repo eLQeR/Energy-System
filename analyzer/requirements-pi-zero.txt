@@ -1,0 +1,28 @@
+# Залежності для запуску pi_zero_analyzer.py на Raspberry Pi Zero V1.3.
+# ВАЖЛИВО: ARMv6 — НЕ ARMv7. Це означає що тут НЕМОЖЛИВО:
+#   * tflite-runtime (тільки ARMv7+)
+#   * tensorflow (взагалі)
+#   * onnxruntime (тільки ARMv7+)
+#
+# Тому інференс — на голому numpy. Ваги завантажуються з anomaly_ae.npz,
+# який експортує train_tf_model.py на dev-машині.
+#
+# Все нижче має ARMv6 wheel на piwheels.org (вмикається в Raspbian Lite
+# автоматично через /etc/pip.conf):
+#
+#   [global]
+#   extra-index-url=https://www.piwheels.org/simple
+#
+# Встановлення на Pi Zero:
+#   pip install -r analyzer/requirements-pi-zero.txt
+#
+# Перенесення моделі з dev-машини:
+#   scp analyzer/anomaly_ae.npz pi@pizero.local:~/Energy-System-fresh/analyzer/
+#   scp analyzer/anomaly_ae.meta.json pi@pizero.local:~/Energy-System-fresh/analyzer/
+
+paho-mqtt>=2.1.0
+requests>=2.32.3
+python-dotenv>=1.0.1
+pydantic>=2.11
+# numpy 1.x — останній з ARMv6 wheel на piwheels. 2.x вже не збирається.
+numpy>=1.24,<2.0

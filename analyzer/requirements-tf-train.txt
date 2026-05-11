@@ -1,0 +1,9 @@
+# Залежності для тренування автоенкодера (train_tf_model.py).
+# Встановлюються лише на dev-машині, НЕ на Pi.
+#
+#   pip install -r analyzer/requirements-tf-train.txt
+#   python analyzer/generate_synthetic.py
+#   python analyzer/train_tf_model.py
+tensorflow>=2.16
+numpy>=1.26
+pandas>=2.2.3

@@ -1,0 +1,18 @@
+# Залежності для запуску tf_analyzer.py на Raspberry Pi.
+# tflite-runtime - це lite-пакет (~5MB) тільки з інтерпретатором без
+# тренувальних залежностей повного TensorFlow (~500MB).
+#
+# Встановлення на Pi (Bookworm/Bullseye, Python 3.9-3.12):
+#   pip install -r analyzer/requirements-tflite.txt
+#
+# Модель anomaly_ae.tflite + anomaly_ae.meta.json копіюються з dev-машини,
+# де натренована за допомогою train_tf_model.py.
+paho-mqtt>=2.1.0
+requests>=2.32.3
+python-dotenv>=1.0.1
+pydantic>=2.11
+numpy>=1.26
+tflite-runtime>=2.14 ; platform_machine != "x86_64" or sys_platform == "linux"
+# На macOS / x86_64-Windows tflite-runtime інколи відсутній у PyPI —
+# використовуйте `pip install tensorflow` як заміну (~500MB):
+tensorflow>=2.16 ; sys_platform == "darwin"

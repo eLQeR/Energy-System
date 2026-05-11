@@ -9,11 +9,24 @@ One call per PDF — no chunking needed because we already filtered to
 """
 from __future__ import annotations
 
+import json
 import logging
+import os
+import shutil
+import subprocess
+from pathlib import Path
 
 import anthropic
 
 from .schema import HeatPumpProfile
+
+# Common install locations for the `claude` CLI (in addition to PATH).
+CLAUDE_FALLBACK_PATHS = [
+    Path.home() / ".local/bin/claude",
+    Path.home() / ".claude/local/claude",
+    Path("/usr/local/bin/claude"),
+    Path("/opt/homebrew/bin/claude"),
+]
 
 log = logging.getLogger(__name__)
 
@@ -39,7 +52,40 @@ Rules:
 
 
 def extract_profile(text: str, model: str = "claude-opus-4-7") -> HeatPumpProfile:
-    """Send filtered manual text to Claude, return validated profile."""
+    """Send filtered manual text to Claude, return validated profile.
+
+    Uses the Anthropic API when ANTHROPIC_API_KEY (or ANTHROPIC_AUTH_TOKEN)
+    is set; otherwise falls back to the `claude` CLI which uses the user's
+    subscription credentials.
+    """
+    if os.getenv("ANTHROPIC_API_KEY") or os.getenv("ANTHROPIC_AUTH_TOKEN"):
+        return _extract_via_api(text, model)
+    claude_bin = _find_claude_binary()
+    if claude_bin:
+        log.info("No API key set — falling back to `claude` CLI at %s", claude_bin)
+        return _extract_via_cli(text, model, claude_bin)
+    raise RuntimeError(
+        "No ANTHROPIC_API_KEY/ANTHROPIC_AUTH_TOKEN set and `claude` CLI "
+        "not found in PATH or common locations. Set an API key in .env, "
+        "install Claude Code CLI, or set CLAUDE_BIN to its full path."
+    )
+
+
+def _find_claude_binary() -> str | None:
+    """Find the `claude` binary: env override → PATH → common install dirs."""
+    override = os.getenv("CLAUDE_BIN")
+    if override and Path(override).exists():
+        return override
+    found = shutil.which("claude")
+    if found:
+        return found
+    for p in CLAUDE_FALLBACK_PATHS:
+        if p.exists():
+            return str(p)
+    return None
+
+
+def _extract_via_api(text: str, model: str) -> HeatPumpProfile:
     client = anthropic.Anthropic()
 
     schema = HeatPumpProfile.model_json_schema()
@@ -74,3 +120,55 @@ def extract_profile(text: str, model: str = "claude-opus-4-7") -> HeatPumpProfil
 
     tool_use = next(b for b in response.content if b.type == "tool_use")
     return HeatPumpProfile.model_validate(tool_use.input)
+
+
+def _extract_via_cli(text: str, model: str, claude_bin: str) -> HeatPumpProfile:
+    """Fallback: call the local `claude` CLI; it authenticates via subscription."""
+    schema = HeatPumpProfile.model_json_schema()
+    prompt = (
+        f"{SYSTEM_PROMPT}\n\n"
+        f"<json_schema>\n{json.dumps(schema, indent=2)}\n</json_schema>\n\n"
+        f"<manual_excerpts>\n{text}\n</manual_excerpts>\n\n"
+        "Return ONLY a valid JSON object matching the schema above. "
+        "No prose, no markdown fences, no commentary — just the JSON."
+    )
+    log.info("Calling `claude` CLI (model=%s, %d chars prompt)", model, len(prompt))
+
+    try:
+        result = subprocess.run(
+            [claude_bin, "-p", "--model", model, "--output-format", "text"],
+            input=prompt,
+            capture_output=True,
+            text=True,
+            timeout=600,
+            check=False,
+        )
+    except FileNotFoundError as e:
+        raise RuntimeError(f"`claude` CLI not found at {claude_bin}") from e
+
+    if result.returncode != 0:
+        raise RuntimeError(
+            f"`claude` CLI exited {result.returncode}: {result.stderr.strip()[:500]}"
+        )
+
+    raw = _strip_json_fence(result.stdout.strip())
+    if not raw:
+        raise RuntimeError("`claude` CLI returned empty output")
+    try:
+        data = json.loads(raw)
+    except json.JSONDecodeError as e:
+        raise RuntimeError(
+            f"`claude` CLI output is not valid JSON: {e}. First 300 chars: {raw[:300]}"
+        ) from e
+    return HeatPumpProfile.model_validate(data)
+
+
+def _strip_json_fence(s: str) -> str:
+    s = s.strip()
+    if s.startswith("```"):
+        lines = s.splitlines()
+        lines = lines[1:]
+        if lines and lines[-1].startswith("```"):
+            lines = lines[:-1]
+        s = "\n".join(lines).strip()
+    return s

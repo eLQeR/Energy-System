@@ -6,6 +6,19 @@ ENV PYTHONUNBUFFERED=1 \
 
 WORKDIR /app
 
+# Node.js 22 + Claude Code CLI — потрібен ontology_api для PDF→онтологія,
+# коли ANTHROPIC_API_KEY не заданий і ми авторизуємось через підписку
+# (`claude /login` у контейнері пише токен у /root/.claude — змонтований
+# як named volume у docker-compose.yml, тож переживає рестарти).
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        curl ca-certificates gnupg \
+ && curl -fsSL https://deb.nodesource.com/setup_22.x | bash - \
+ && apt-get install -y --no-install-recommends nodejs \
+ && npm install -g @anthropic-ai/claude-code \
+ && apt-get purge -y gnupg \
+ && apt-get autoremove -y \
+ && rm -rf /var/lib/apt/lists/*
+
 COPY monitoring/requirements.txt      monitoring/requirements.txt
 COPY ontology/requirements.txt        ontology/requirements.txt
 COPY analyzer/requirements.txt        analyzer/requirements.txt
