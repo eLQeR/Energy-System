@@ -30,24 +30,71 @@ CLAUDE_FALLBACK_PATHS = [
 
 log = logging.getLogger(__name__)
 
-SYSTEM_PROMPT = """You extract structured technical specifications from
-heat-pump manufacturer manuals.
+SYSTEM_PROMPT = """You extract a complete service-knowledge profile of a
+heat pump from manufacturer manual excerpts. Your output becomes part of an
+operational knowledge graph used by maintenance and anomaly-detection systems.
 
-Read the provided manual excerpts (already filtered to specification-rich
-pages) and call the record_specs tool exactly once with the extracted
+Read the provided manual excerpts (already filtered to high-signal pages)
+and call the record_specs tool exactly once with a fully populated
 HeatPumpProfile.
 
-Rules:
-1. Cite ONLY values stated explicitly in the text. Use null when a value
-   is not stated. Do not infer or estimate from related values.
-2. Prefer English text. If a value appears only in a non-English section,
-   extract it but use the English unit names.
-3. If multiple variants are described in one table, pick the most
-   representative numbers (typically the middle or default variant) and
-   list ALL variant SKUs in model_variants.
-4. Convert units to the schema's units: °C, kW, kg, L, V.
-5. operating_modes: include a mode only if the manual states the unit
-   supports it (heating / cooling / dhw / standby).
+# What to extract
+
+You MUST extract every category below that is present in the text. Do NOT
+stop after specifications — the troubleshooting, error-code and maintenance
+tables are the most valuable knowledge in the document.
+
+1. **Identification & performance**: manufacturer, model_series, all model_variants,
+   nominal/max heating power, COPs, flow temperature limits, refrigerant,
+   tank volume, weight, mains voltage, supported operating_modes.
+
+2. **components**: every physical/logical part that is referenced anywhere
+   in the manual (especially in troubleshooting and parts tables). For each
+   give a short `name` and pick the best-matching `component_type` from the
+   enum. Examples: "Booster heater" → heater; "3-way valve" → valve;
+   "FTC3 controller board" → controller; "THW3 thermistor" → thermistor;
+   "Inlet strainer" → strainer; "Expansion vessel" → vessel.
+
+3. **fault_cases**: ONE entry per row of any "Troubleshooting" / "Basic
+   fault finding" / "Symptom-Cause-Solution" table. If a single symptom
+   has multiple possible causes, emit one entry per (symptom, cause, solution)
+   tuple — do NOT collapse them. Preserve "Direct/Indirect" or
+   "Continual/Intermittent" prefixes from the cause column verbatim.
+   Set affects_component to the matching component `name` from your
+   components list when the cause clearly points at one part.
+
+4. **error_codes**: ONE entry per row of the controller error-code table
+   (codes like L1, L2, J0, J1-J8, E0-E5, E6-EF, E9, U*/F*). Keep range
+   notations as a single entry with code="J1-J8".
+
+5. **maintenance_parts**: from the "Parts which require regular replacement"
+   and "Parts which require regular inspection" tables. Convert intervals
+   into the appropriate field: years → replace_every_years/check_every_years,
+   hours → replace_every_hours (e.g. pump "20 000 hrs (3 years)" →
+   replace_every_hours=20000 AND check_every_years=3). Copy the failure
+   mode into typical_failure when listed.
+
+# Severity inference
+
+For fault_cases and error_codes, infer severity from the action text:
+- "Normal operation, no action" → "info"
+- User-level adjustment (settings, battery, schedule) → "low"
+- Service-call check / clean / reset → "medium"
+- Replace a part / isolate / contact dealer → "high"
+- Safety hazard (overheat, isolate power, refrigerant recovery) → "critical"
+
+# General rules
+
+- Cite ONLY values stated explicitly. Use null / empty list when not stated.
+- Prefer English text. If only non-English text is available, extract but
+  use the English unit names.
+- If multiple variants share one spec table, pick the representative
+  (middle/default) numbers and list ALL SKUs in model_variants.
+- Convert units to: °C, kW, kg, L, V, years, hours.
+- operating_modes: include a mode only if the manual confirms the unit
+  supports it.
+- Be exhaustive on fault_cases and error_codes: a useful extraction has
+  20-40 fault_cases and 10-20 error_codes from a typical install manual.
 """
 
 
@@ -104,7 +151,7 @@ def _extract_via_api(text: str, model: str) -> HeatPumpProfile:
 
     response = client.messages.create(
         model=model,
-        max_tokens=4096,
+        max_tokens=16384,
         system=SYSTEM_PROMPT,
         tools=[tool],
         tool_choice={"type": "tool", "name": "record_specs"},

@@ -29,6 +29,34 @@ class MetricsMessage(BaseModel):
     metrics: Metrics
 
 
+class Diagnosis(BaseModel):
+    """Висновок щодо аномалії, побудований з онтології (FaultCase / ErrorCode).
+
+    Pi-аналізатор створює його на основі anomaly_code → mapping → онтологія.
+    Поля одного з джерел можуть бути порожніми: якщо причина знайдена через
+    FaultCase — заповнюються cause/solution/fault_iri; якщо натомість це
+    можливий код контролера — заповнюються error_code/error_action.
+    """
+    matched_code: str = Field(
+        description="Anomaly-код, що ініціював діагноз, напр. 'cop_below_nominal'.",
+    )
+    kind: Literal["fault", "error_code", "hint"] = Field(
+        description="Тип діагнозу: fault — з таблиці troubleshooting; "
+                    "error_code — можливий код контролера; hint — текстова підказка.",
+    )
+    cause: str | None = Field(None, description="Імовірна причина (з FaultCase.possibleCause).")
+    solution: str | None = Field(None, description="Рекомендована дія (з FaultCase.solution).")
+    fault_iri: str | None = Field(None, description="IRI FaultCase в онтології.")
+    fault_symptom: str | None = Field(None, description="Симптом для групування у UI.")
+    error_code: str | None = Field(None, description="Код помилки контролера, напр. 'L1', 'E9'.")
+    error_description: str | None = Field(None, description="Опис коду.")
+    error_action: str | None = Field(None, description="Дія для коду.")
+    affects_component: str | None = Field(None, description="Іменування ушкодженого компонента.")
+    severity: str | None = Field(None, description="info|low|medium|high|critical")
+    hint: str | None = Field(None, description="Загальна підказка (якщо специфічного факту нема).")
+    confidence: float = Field(1.0, description="Наскільки впевнено мапиться (0..1).")
+
+
 class StateMessage(BaseModel):
     """Публікується Диплом-3 analyzer'ом у lab/equipment/{device_id}/state."""
     device_id: str
@@ -37,6 +65,10 @@ class StateMessage(BaseModel):
     anomalies: list[str] = []
     confidence: float = 1.0
     explanation: str = ""
+    diagnoses: list[Diagnosis] = Field(
+        default_factory=list,
+        description="Імовірні діагнози з онтології (порожнє у нормальному стані).",
+    )
 
 
 TOPIC_METRICS = "lab/equipment/{device_id}/metrics"
@@ -66,4 +98,8 @@ class AlertPayload(BaseModel):
     bounds_snapshot: dict = Field(
         default_factory=dict,
         description="Межі з онтології, проти яких перевіряли (для аудиту)",
+    )
+    diagnoses: list[Diagnosis] = Field(
+        default_factory=list,
+        description="Імовірні діагнози з онтології, з якими Pi асоціював alert.",
     )

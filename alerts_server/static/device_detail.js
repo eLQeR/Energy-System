@@ -205,6 +205,7 @@ async function refresh() {
     renderBounds(d.bounds, d.metrics);
     renderSpecs(d.specs);
     renderTimeline(d.alerts);
+    loadOntologyKnowledge();
 
     if (Object.keys(d.metrics || {}).length && d.last_seen && d.last_seen !== lastTs) {
       pushSnapshot(d.metrics, d.last_seen);
@@ -302,9 +303,224 @@ function renderTimeline(alerts) {
 <span style="color:var(--normal);font-size:11px;"> · ${statusText(a.status)}</span>
 <div class="codes">${a.anomaly_codes.map(code => esc(anomalyCodeText(code))).join('  ·  ')}</div>
         <div style="font-size:11px;color:var(--text-dim);">${esc(a.explanation || '')}</div>
+        ${renderDiagnoses(a.diagnoses || [])}
       </div>
     </div>
   `).join("");
+}
+
+function renderDiagnoses(diagnoses) {
+  if (!diagnoses.length) return "";
+  const items = diagnoses.map(d => {
+    const sevColor = (typeof SEVERITY_COLOR !== 'undefined' && SEVERITY_COLOR[d.severity]) || "#8b949e";
+    if (d.kind === "error_code") {
+      return `
+        <div style="display:flex;gap:8px;align-items:flex-start;padding:6px 8px;
+                    background:var(--bg-elev);border-radius:4px;
+                    border-left:3px solid ${sevColor};margin-top:4px;">
+          <code style="color:${sevColor};font-weight:600;min-width:48px;">${esc(d.error_code || '?')}</code>
+          <div style="font-size:11px;line-height:1.4;">
+            <div style="color:var(--text);">${esc(d.error_description || '')}</div>
+            <div style="color:var(--text-muted);margin-top:2px;">→ ${esc(d.error_action || '')}</div>
+          </div>
+        </div>`;
+    }
+    if (d.kind === "fault") {
+      return `
+        <div style="padding:6px 8px;background:var(--bg-elev);border-radius:4px;
+                    border-left:3px solid ${sevColor};margin-top:4px;font-size:11px;line-height:1.4;">
+          <div style="color:var(--text);"><strong>Імовірна причина:</strong> ${esc(d.cause || '')}</div>
+          <div style="color:var(--text-muted);margin-top:2px;">→ ${esc(d.solution || '')}</div>
+          ${d.affects_component ? `<div style="color:var(--text-dim);margin-top:2px;">Компонент: <code>${esc(d.affects_component)}</code></div>` : ''}
+        </div>`;
+    }
+    return `
+      <div style="padding:6px 8px;background:var(--bg-elev);border-radius:4px;
+                  border-left:3px solid #8b949e;margin-top:4px;
+                  font-size:11px;color:var(--text-muted);font-style:italic;">
+        💡 ${esc(d.hint || '')}
+      </div>`;
+  }).join("");
+  return `<div style="margin-top:6px;">
+    <div style="font-size:10px;color:var(--text-dim);text-transform:uppercase;
+                letter-spacing:.5px;margin-bottom:2px;">Діагноз з онтології</div>
+    ${items}
+  </div>`;
+}
+
+// ──────────────────────────────────────────────────────────────────────
+// Знання з онтології: несправності, коди помилок, ТО.
+// Завантажуємо один раз — дані статичні до повторного reload-у онтології.
+// ──────────────────────────────────────────────────────────────────────
+
+const SEVERITY_COLOR = {
+  info:     "#79c0ff",
+  low:      "#3fb950",
+  medium:   "#d29922",
+  high:     "#f85149",
+  critical: "#ff4f4f",
+};
+
+const SEVERITY_LABEL_UK = {
+  info:     "інформ.",
+  low:      "низька",
+  medium:   "середня",
+  high:     "висока",
+  critical: "критична",
+};
+
+function _severityBadge(sev) {
+  if (!sev) return "";
+  const color = SEVERITY_COLOR[sev] || "#8b949e";
+  const text  = SEVERITY_LABEL_UK[sev] || sev;
+  return `<span style="display:inline-block;padding:1px 8px;border-radius:10px;
+          font-size:10px;background:${color}22;color:${color};
+          border:1px solid ${color}66;text-transform:uppercase;
+          letter-spacing:.5px;margin-left:8px;">${text}</span>`;
+}
+
+let _ontologyLoaded = false;
+async function loadOntologyKnowledge() {
+  if (_ontologyLoaded) return;
+  _ontologyLoaded = true;
+  const id = encodeURIComponent(DEVICE_ID);
+  const [faults, codes, maint] = await Promise.all([
+    api(`/api/devices/${id}/faults`).catch(() => []),
+    api(`/api/devices/${id}/error-codes`).catch(() => []),
+    api(`/api/devices/${id}/maintenance`).catch(() => []),
+  ]);
+  renderFaults(faults);
+  renderErrorCodes(codes);
+  renderMaintenance(maint);
+}
+
+function renderFaults(items) {
+  const root = document.getElementById("faults-list");
+  if (!items.length) {
+    root.innerHTML = `<div style="padding:14px;color:var(--text-dim);">
+      Несправностей в онтології для цього пристрою не описано.</div>`;
+    return;
+  }
+  const bySymptom = new Map();
+  for (const f of items) {
+    const key = f.symptom || f.label || "—";
+    if (!bySymptom.has(key)) bySymptom.set(key, []);
+    bySymptom.get(key).push(f);
+  }
+  root.innerHTML = [...bySymptom.entries()].map(([symptom, rows]) => `
+    <details class="fault-group" style="border-bottom:1px solid var(--border);
+             padding:10px 0;">
+      <summary style="cursor:pointer;font-weight:600;
+                      display:flex;justify-content:space-between;align-items:center;">
+        <span>${esc(symptom)}</span>
+        <span style="font-size:11px;color:var(--text-dim);font-weight:normal;">
+          ${rows.length} ${rows.length === 1 ? 'причина' : 'причин(и)'}
+        </span>
+      </summary>
+      <div style="margin-top:8px;display:flex;flex-direction:column;gap:8px;">
+        ${rows.map(r => `
+          <div style="padding:8px 12px;background:var(--bg-elev);border-radius:6px;
+                      border-left:3px solid ${SEVERITY_COLOR[r.severity] || '#8b949e'};">
+            <div style="font-size:12px;color:var(--text);">
+              <strong>Причина:</strong> ${esc(r.cause || '—')}
+              ${_severityBadge(r.severity)}
+            </div>
+            <div style="font-size:12px;color:var(--text-muted);margin-top:4px;">
+              <strong>Рішення:</strong> ${esc(r.solution || '—')}
+            </div>
+            ${r.affects ? `<div style="font-size:11px;color:var(--text-dim);
+              margin-top:4px;">Компонент: <code>${esc(r.affects)}</code></div>` : ''}
+          </div>
+        `).join("")}
+      </div>
+    </details>
+  `).join("");
+}
+
+function renderErrorCodes(items) {
+  const root = document.getElementById("error-codes-list");
+  if (!items.length) {
+    root.innerHTML = `<div style="padding:14px;color:var(--text-dim);">
+      Кодів помилок в онтології не описано.</div>`;
+    return;
+  }
+  root.innerHTML = `
+    <table style="width:100%;border-collapse:collapse;font-size:12px;">
+      <thead>
+        <tr style="text-align:left;color:var(--text-dim);font-size:11px;
+                   text-transform:uppercase;letter-spacing:.5px;">
+          <th style="padding:6px 8px;border-bottom:1px solid var(--border);width:80px;">Код</th>
+          <th style="padding:6px 8px;border-bottom:1px solid var(--border);">Опис</th>
+          <th style="padding:6px 8px;border-bottom:1px solid var(--border);">Дія</th>
+          <th style="padding:6px 8px;border-bottom:1px solid var(--border);width:80px;"></th>
+        </tr>
+      </thead>
+      <tbody>
+        ${items.map(r => `
+          <tr style="vertical-align:top;">
+            <td style="padding:8px;border-bottom:1px solid var(--border);
+                       font-family:ui-monospace,monospace;font-weight:600;
+                       color:${SEVERITY_COLOR[r.severity] || 'var(--text)'};">
+              ${esc(r.code || '—')}
+            </td>
+            <td style="padding:8px;border-bottom:1px solid var(--border);">
+              ${esc(r.description || '—')}
+            </td>
+            <td style="padding:8px;border-bottom:1px solid var(--border);
+                       color:var(--text-muted);">
+              ${esc(r.action || '—')}
+            </td>
+            <td style="padding:8px;border-bottom:1px solid var(--border);">
+              ${_severityBadge(r.severity)}
+            </td>
+          </tr>
+        `).join("")}
+      </tbody>
+    </table>`;
+}
+
+function renderMaintenance(items) {
+  const root = document.getElementById("maintenance-list");
+  if (!items.length) {
+    root.innerHTML = `<div style="padding:14px;color:var(--text-dim);">
+      Регламент ТО для цього пристрою не описано.</div>`;
+    return;
+  }
+  const intervalText = (r) => {
+    const parts = [];
+    if (r.replace_every_years != null) parts.push(`заміна кожні ${r.replace_every_years} р.`);
+    if (r.replace_every_hours != null) parts.push(`або кожні ${r.replace_every_hours.toLocaleString()} год`);
+    if (r.check_every_years   != null) parts.push(`перевірка кожні ${r.check_every_years} р.`);
+    return parts.join(", ") || "—";
+  };
+  root.innerHTML = `
+    <table style="width:100%;border-collapse:collapse;font-size:12px;">
+      <thead>
+        <tr style="text-align:left;color:var(--text-dim);font-size:11px;
+                   text-transform:uppercase;letter-spacing:.5px;">
+          <th style="padding:6px 8px;border-bottom:1px solid var(--border);">Деталь</th>
+          <th style="padding:6px 8px;border-bottom:1px solid var(--border);">Регламент</th>
+          <th style="padding:6px 8px;border-bottom:1px solid var(--border);">Типова відмова</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${items.map(r => `
+          <tr style="vertical-align:top;">
+            <td style="padding:8px;border-bottom:1px solid var(--border);font-weight:500;">
+              ${esc(r.label || r.id)}
+            </td>
+            <td style="padding:8px;border-bottom:1px solid var(--border);
+                       color:var(--text-muted);">
+              ${esc(intervalText(r))}
+            </td>
+            <td style="padding:8px;border-bottom:1px solid var(--border);
+                       color:var(--text-dim);">
+              ${esc(r.typical_failure || '—')}
+            </td>
+          </tr>
+        `).join("")}
+      </tbody>
+    </table>`;
 }
 
 initCharts();

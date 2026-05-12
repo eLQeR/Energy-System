@@ -1,0 +1,34 @@
+{
+  "version": 1,
+  "description": "Mapping from edge-analyzer anomaly codes to ontology FaultCase / ErrorCode candidates. Keys reference codeId values (universal across manufacturers) and affects_component name fragments (matched case-insensitively against FaultCase.affects).",
+  "rules": [
+    {
+      "code_prefix": "cop_below_nominal",
+      "hint": "COP нижче номіналу — компресор не виходить на очікувану ефективність. Перевірити зовнішній блок та контур холодоагенту.",
+      "affects_components": ["compressor", "evaporator", "condenser", "outdoor", "heat_pump", "heatpump", "3_way_valve", "three_way_valve"],
+      "error_codes": ["L1", "E6-EF", "E9", "U*/F*"]
+    },
+    {
+      "code_prefix": "power_over_limit",
+      "hint": "Перевищена максимальна потужність — імовірно одночасно працюють бустер-нагрівач та занурювальний ТЕН або перегрів.",
+      "affects_components": ["booster_heater", "immersion_heater", "thermistor"],
+      "error_codes": ["L1", "L4"]
+    },
+    {
+      "code_prefix": "flow_temp_over_limit",
+      "hint": "Подача перевищила верхню межу — спрацював захист від перегріву або проблема з термостатом.",
+      "affects_components": ["booster_heater", "immersion_heater", "thermistor", "expansion_vessel", "prv"],
+      "error_codes": ["L1", "L3", "L4"]
+    },
+    {
+      "code_prefix": "flow_temp_under_limit",
+      "hint": "Подача нижче мінімуму — низький проток у первинному контурі або ризик замерзання.",
+      "affects_components": ["strainer", "circ_pump", "flow_switch", "expansion_vessel", "pump"],
+      "error_codes": ["L6", "L9"]
+    },
+    {
+      "code_prefix": "ml_outlier",
+      "hint": "Нетипова комбінація показників — модель ML вважає це аномалією; кореляція з відомими несправностями невизначена."
+    }
+  ]
+}

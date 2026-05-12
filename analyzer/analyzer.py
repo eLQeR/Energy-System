@@ -17,12 +17,16 @@ from dotenv import load_dotenv
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from shared.schemas import (
     AlertPayload,
+    Diagnosis,
     MetricsMessage,
     StateMessage,
     TOPIC_METRICS_WILDCARD,
     TOPIC_STATE,
     utcnow_iso,
 )
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from diagnose import DiagnosticEngine  # noqa: E402
 
 load_dotenv(Path(__file__).resolve().parent.parent / ".env")
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
@@ -140,6 +144,13 @@ BOUNDS_FETCHED: dict[str, float] = {}
 LAST_STATE: dict[str, str] = {}
 LAST_STATE_LOCK = threading.Lock()
 
+# Двигун збагачення анома­лій причинами та рішеннями з онтології.
+# Кеш контексту синхронізований з BOUNDS_TTL_SEC.
+DIAGNOSER = DiagnosticEngine(
+    ontology_api_url=ONTOLOGY_API,
+    cache_ttl_sec=BOUNDS_TTL_SEC,
+)
+
 
 def get_bounds(device_id: str) -> dict:
     now = time.time()
@@ -198,6 +209,7 @@ def forward_alert(state: StateMessage, metrics_dump: dict, bounds: dict) -> None
         confidence=state.confidence,
         metrics_snapshot=metrics_dump,
         bounds_snapshot=bounds,
+        diagnoses=state.diagnoses,
     )
     try:
         requests.post(
@@ -276,6 +288,11 @@ def analyze(msg: MetricsMessage) -> tuple[StateMessage, dict | None]:
         anomalies = []
         state = "normal"
 
+    # Збагачуємо причиною/рішенням з онтології тільки якщо щось пішло не так.
+    diagnoses: list[Diagnosis] = (
+        DIAGNOSER.enrich(anomalies, msg.device_id) if state != "normal" else []
+    )
+
     state_msg = StateMessage(
         device_id=msg.device_id,
         timestamp=utcnow_iso(),
@@ -283,6 +300,7 @@ def analyze(msg: MetricsMessage) -> tuple[StateMessage, dict | None]:
         anomalies=anomalies,
         confidence=min(1.0, abs(score)),
         explanation=f"{explanation_ml}; rules matched: {len(rule_anomalies)}",
+        diagnoses=diagnoses,
     )
     return state_msg, prediction
 
@@ -323,6 +341,8 @@ def on_message(client: mqtt.Client, _userdata, mqtt_msg: mqtt.MQTTMessage) -> No
         state.device_id, state.state, state.confidence, state.anomalies,
         "  → ALERT FORWARDED" if should_forward else "",
     )
+    for diag in state.diagnoses:
+        log.info("  · %s", DIAGNOSER.format_for_log(diag))
 
 
 def on_connect(client, *_):

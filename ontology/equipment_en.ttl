@@ -108,277 +108,277 @@ lab:ecodan_01_condenser  a lab:Condenser  ; rdfs:label "Конденсатор E
 
 # --- Додаткові компоненти, на які посилається діагностика ---------------
 lab:ecodan_01_booster_heater    a lab:Component ;
-    rdfs:label "Бустер-нагрівач (електричний, у циліндрі)" .
+    rdfs:label "Booster heater (electric, in cylinder)" .
 lab:ecodan_01_immersion_heater  a lab:Component ;
-    rdfs:label "Занурювальний ТЕН (3 кВт)" .
+    rdfs:label "Immersion heater (3 kW)" .
 lab:ecodan_01_three_way_valve   a lab:Component ;
-    rdfs:label "Трихідний клапан (ГВП ↔ опалення)" .
+    rdfs:label "3-way valve (DHW ↔ heating diverter)" .
 lab:ecodan_01_expansion_vessel  a lab:Component ;
-    rdfs:label "Розширювальний бак (первинний контур)" .
+    rdfs:label "Expansion vessel (primary circuit)" .
 lab:ecodan_01_prv               a lab:Component ;
-    rdfs:label "Запобіжний клапан тиску (PRV)" .
+    rdfs:label "Pressure relief valve" .
 lab:ecodan_01_strainer          a lab:Component ;
-    rdfs:label "Вхідний фільтр" .
+    rdfs:label "Inlet strainer" .
 lab:ecodan_01_circ_pump         a lab:Component ;
-    rdfs:label "Первинний циркуляційний насос" .
+    rdfs:label "Primary circulation pump" .
 lab:ecodan_01_flow_switch       a lab:Component ;
-    rdfs:label "Реле протоку" .
+    rdfs:label "Flow switch" .
 lab:ecodan_01_thermistor_thw3   a lab:Component ;
-    rdfs:label "Термістор THW3 (бустер-нагрівач)" .
+    rdfs:label "Thermistor THW3 (booster heater)" .
 lab:ecodan_01_thermistors_indoor a lab:Component ;
-    rdfs:label "Внутрішні термістори (TH1, TH2, THW1, THW2, THW5B)" .
+    rdfs:label "Indoor thermistors (TH1, TH2, THW1, THW2, THW5B)" .
 lab:ecodan_01_ftc3              a lab:Component ;
-    rdfs:label "Плата контролера FTC3" .
+    rdfs:label "FTC3 controller board" .
 lab:ecodan_01_wireless_receiver a lab:Component ;
-    rdfs:label "Бездротовий приймач" .
+    rdfs:label "Wireless receiver" .
 
 # --- Випадки несправностей (Basic Troubleshooting Table, page 39) -------
 
 lab:eco01_f01_booster_thermostat a lab:FaultCase ;
     rdfs:label       "Холодна вода — спрацював термостат бустер-нагрівача" ;
-    lab:faultSymptom "Холодна вода з крана" ;
-    lab:possibleCause "Пряма причина — Спрацював термозахист бустер-нагрівача." ;
-    lab:solution     "Перевірте термостат бустер-нагрівача і натисніть кнопку скидання, якщо це безпечно. Кнопка скидання закрита білим гумовим ковпачком (див. схему компонентів, сторінка 6)." ;
+    lab:faultSymptom "Cold water at tap" ;
+    lab:possibleCause "Direct — Booster heater cut out has triggered." ;
+    lab:solution     "Check booster heater thermostat and press reset button if safe. Reset button is covered with white rubber cap (see component parts diagram, page 6 for position)." ;
     lab:severity     "medium" ;
     lab:affectsComponent lab:ecodan_01_booster_heater ;
     lab:source       "BH79D188H02.pdf p.39" .
 
 lab:eco01_f02_booster_breaker a lab:FaultCase ;
     rdfs:label       "Холодна вода — спрацював автомат ECB1 бустер-нагрівача" ;
-    lab:faultSymptom "Холодна вода з крана" ;
-    lab:possibleCause "Пряма причина — Спрацював автомат бустер-нагрівача (ECB1)." ;
-    lab:solution     "Перевірте причину спрацювання та скиньте автомат, якщо це безпечно." ;
+    lab:faultSymptom "Cold water at tap" ;
+    lab:possibleCause "Direct — Booster heater breaker (ECB1) has tripped." ;
+    lab:solution     "Check the cause of the trip and reset if safe." ;
     lab:severity     "medium" ;
     lab:affectsComponent lab:ecodan_01_booster_heater ;
     lab:source       "BH79D188H02.pdf p.39" .
 
 lab:eco01_f03_booster_thermal_cutout a lab:FaultCase ;
     rdfs:label       "Холодна вода — термозахист бустер-нагрівача (без можливості скидання)" ;
-    lab:faultSymptom "Холодна вода з крана" ;
-    lab:possibleCause "Пряма причина — Термозахист бустер-нагрівача спрацював і не може бути скинутий кнопкою ручного скидання." ;
-    lab:solution     "Перевірте опір термозахисту. Якщо 0 — зʼєднання розірване, бустер-нагрівач потрібно замінити. Звʼяжіться з дилером Mitsubishi Electric." ;
+    lab:faultSymptom "Cold water at tap" ;
+    lab:possibleCause "Direct — Booster heater thermal cut-out has operated and cannot be reset using the Manual reset button." ;
+    lab:solution     "Check the resistance of the thermal cut-out. If 0 then the connection is broken and the booster heater will have to be replaced. Contact Mitsubishi Electric dealer." ;
     lab:severity     "high" ;
     lab:affectsComponent lab:ecodan_01_booster_heater ;
     lab:source       "BH79D188H02.pdf p.39" .
 
 lab:eco01_f04_immersion_thermostat a lab:FaultCase ;
     rdfs:label       "Холодна вода — спрацював термостат занурювального ТЕНа" ;
-    lab:faultSymptom "Холодна вода з крана" ;
-    lab:possibleCause "Пряма причина — Спрацював термозахист занурювального ТЕНа." ;
-    lab:solution     "Перевірте термостат занурювального ТЕНа і натисніть кнопку скидання (розташована на бобишці ТЕНа), якщо це безпечно. Якщо ТЕН працював без води — замініть його на новий." ;
+    lab:faultSymptom "Cold water at tap" ;
+    lab:possibleCause "Direct — Immersion heater cut out has triggered." ;
+    lab:solution     "Check immersion heater thermostat and press reset button, located on immersion heater boss, if safe. If the heater has been operated with no water inside, replace it with a new one." ;
     lab:severity     "high" ;
     lab:affectsComponent lab:ecodan_01_immersion_heater ;
     lab:source       "BH79D188H02.pdf p.39" .
 
 lab:eco01_f05_immersion_breaker a lab:FaultCase ;
     rdfs:label       "Холодна вода — спрацював автомат ECB2 занурювального ТЕНа" ;
-    lab:faultSymptom "Холодна вода з крана" ;
-    lab:possibleCause "Пряма причина — Спрацював автомат занурювального ТЕНа (ECB2)." ;
-    lab:solution     "Перевірте причину спрацювання та скиньте автомат, якщо це безпечно." ;
+    lab:faultSymptom "Cold water at tap" ;
+    lab:possibleCause "Direct — Immersion heater breaker (ECB2) has tripped." ;
+    lab:solution     "Check the cause of the trip and reset if safe." ;
     lab:severity     "medium" ;
     lab:affectsComponent lab:ecodan_01_immersion_heater ;
     lab:source       "BH79D188H02.pdf p.39" .
 
 lab:eco01_f06_three_way_valve_fault a lab:FaultCase ;
     rdfs:label       "Холодна вода — несправність трихідного клапана" ;
-    lab:faultSymptom "Холодна вода з крана" ;
-    lab:possibleCause "Непряма причина — Несправність трихідного клапана." ;
-    lab:solution     "Перевірте сантехнічне підключення та проводку до трихідного клапана." ;
+    lab:faultSymptom "Cold water at tap" ;
+    lab:possibleCause "Indirect — 3-way valve fault." ;
+    lab:solution     "Check plumbing and wiring to the 3-way valve." ;
     lab:severity     "medium" ;
     lab:affectsComponent lab:ecodan_01_three_way_valve ;
     lab:source       "BH79D188H02.pdf p.39" .
 
 lab:eco01_f07_heatpump_not_working a lab:FaultCase ;
     rdfs:label       "Холодна вода — зовнішній блок не працює" ;
-    lab:faultSymptom "Холодна вода з крана" ;
-    lab:possibleCause "Непряма причина — Тепловий насос не працює." ;
-    lab:solution     "Перевірте тепловий насос — звіртеся з сервісною інструкцією зовнішнього блоку." ;
+    lab:faultSymptom "Cold water at tap" ;
+    lab:possibleCause "Indirect — Heat pump not working." ;
+    lab:solution     "Check heat pump — consult outdoor unit service manual." ;
     lab:severity     "high" ;
     lab:source       "BH79D188H02.pdf p.39" .
 
 lab:eco01_f08_all_hot_water_used a lab:FaultCase ;
     rdfs:label       "Холодна вода — вичерпано весь запас гарячої" ;
-    lab:faultSymptom "Холодна вода з крана" ;
-    lab:possibleCause "Уся гаряча вода використана." ;
-    lab:solution     "Переконайтеся, що активний режим ГВП, і дочекайтеся нагріву бака." ;
+    lab:faultSymptom "Cold water at tap" ;
+    lab:possibleCause "All hot water used." ;
+    lab:solution     "Ensure DHW mode is operating and wait for tank to reheat." ;
     lab:severity     "low" ;
     lab:source       "BH79D188H02.pdf p.39" .
 
 lab:eco01_f09_prv_continual_prv_fault a lab:FaultCase ;
     rdfs:label       "Постійний витік через запобіжний клапан розширення" ;
-    lab:faultSymptom "Вода тече з запобіжного клапана розширення" ;
-    lab:possibleCause "Постійний — Локально встановлений редукційний клапан тиску не працює." ;
-    lab:solution     "Перевірте роботу редукційного клапана тиску та замініть, якщо потрібно." ;
+    lab:faultSymptom "Water discharges from expansion relief valve" ;
+    lab:possibleCause "Continual — locally supplied pressure reducing valve not working." ;
+    lab:solution     "Check function of pressure reducing valve and replace if necessary." ;
     lab:severity     "medium" ;
     lab:affectsComponent lab:ecodan_01_prv ;
     lab:source       "BH79D188H02.pdf p.39" .
 
 lab:eco01_f10_prv_seat_damaged a lab:FaultCase ;
     rdfs:label       "Постійний витік — пошкоджене сідло запобіжного клапана" ;
-    lab:faultSymptom "Вода тече з запобіжного клапана розширення" ;
-    lab:possibleCause "Постійний — Можливо пошкоджене сідло запобіжного клапана розширення." ;
-    lab:solution     "Зніміть картридж, перевірте сідло та замініть, якщо потрібно." ;
+    lab:faultSymptom "Water discharges from expansion relief valve" ;
+    lab:possibleCause "Continual — expansion relief valve seat may be damaged." ;
+    lab:solution     "Remove cartridge, check seat and renew if necessary." ;
     lab:severity     "medium" ;
     lab:affectsComponent lab:ecodan_01_prv ;
     lab:source       "BH79D188H02.pdf p.39" .
 
 lab:eco01_f11_expansion_vessel_low a lab:FaultCase ;
     rdfs:label       "Періодичний витік — впав тиск у розширювальному баці" ;
-    lab:faultSymptom "Вода тече з запобіжного клапана розширення" ;
-    lab:possibleCause "Періодичний — Тиск у розширювальному баці міг впасти або мембрана прорвана." ;
-    lab:solution     "Перевірте тиск у розширювальному баці. Закачайте до 1 бар, якщо потрібно. Якщо мембрана прорвана — замініть бак." ;
+    lab:faultSymptom "Water discharges from expansion relief valve" ;
+    lab:possibleCause "Intermittent — expansion vessel charge may have reduced or bladder perished." ;
+    lab:solution     "Check pressure in expansion vessel. Recharge to 1 bar if necessary. If bladder perished, replace vessel." ;
     lab:severity     "medium" ;
     lab:affectsComponent lab:ecodan_01_expansion_vessel ;
     lab:source       "BH79D188H02.pdf p.39" .
 
 lab:eco01_f12_back_pressurised a lab:FaultCase ;
     rdfs:label       "Витік — зворотний тиск на циліндрі" ;
-    lab:faultSymptom "Вода тече з запобіжного клапана розширення" ;
-    lab:possibleCause "На циліндр діє зворотний тиск." ;
-    lab:solution     "На холодному циліндрі перевірте тиск. Якщо він дорівнює тиску у магістралі — у вас зворотне живлення. Встановіть збалансовану холодну подачу." ;
+    lab:faultSymptom "Water discharges from expansion relief valve" ;
+    lab:possibleCause "Unit is being back pressurised." ;
+    lab:solution     "With cylinder cold check pressure in cylinder. If this is the same as the incoming mains pressure then you are getting backfeed. Install a balanced cold supply." ;
     lab:severity     "medium" ;
     lab:source       "BH79D188H02.pdf p.39" .
 
 lab:eco01_f13_temp_pressure_relief_overheat a lab:FaultCase ;
     rdfs:label       "Витік з ТіP-клапана — перегрів циліндра (EHPT20X-VM2HA only)" ;
-    lab:faultSymptom "Вода тече з клапана тиску та температури" ;
-    lab:possibleCause "Перегрів — Термоконтролери відмовили (лише для EHPT20X-VM2HA)." ;
-    lab:solution     "Вимкніть живлення теплового насоса та ТЕНів. Залиште подачу води увімкненою. Дочекайтеся припинення витоку. Перекрийте подачу води та замініть несправний клапан." ;
+    lab:faultSymptom "Water discharges from temperature and pressure relief valve" ;
+    lab:possibleCause "Unit has overheated — thermal controls have failed (EHPT20X-VM2HA only)." ;
+    lab:solution     "Switch off power to heat pump and immersion heaters. Leave water supply on. Wait until discharge stops. Isolate water supply and replace if faulty." ;
     lab:severity     "critical" ;
     lab:source       "BH79D188H02.pdf p.39" .
 
 lab:eco01_f14_milky_water a lab:FaultCase ;
     rdfs:label       "Каламутна / молочна вода" ;
-    lab:faultSymptom "Молочна / каламутна вода" ;
-    lab:possibleCause "Насичена киснем вода." ;
-    lab:solution     "Будь-яка система під тиском при витоці вивільняє бульбашки кисню. Бульбашки осідають з часом." ;
+    lab:faultSymptom "Milky/Cloudy water" ;
+    lab:possibleCause "Oxygenated water." ;
+    lab:solution     "Water from any pressurised system will release oxygen bubbles when flowing. The bubbles will settle out." ;
     lab:severity     "info" ;
     lab:source       "BH79D188H02.pdf p.39" .
 
 lab:eco01_f15_cold_main_off a lab:FaultCase ;
     rdfs:label       "Немає протоку гарячої — закритий ввід" ;
-    lab:faultSymptom "Немає протоку гарячої води" ;
-    lab:possibleCause "Закритий магістральний вентиль холодної води." ;
-    lab:solution     "Перевірте та відкрийте магістральний вентиль." ;
+    lab:faultSymptom "No hot water flow" ;
+    lab:possibleCause "Cold main off." ;
+    lab:solution     "Check and open stop cock." ;
     lab:severity     "low" ;
     lab:source       "BH79D188H02.pdf p.39" .
 
 lab:eco01_f16_strainer_blocked a lab:FaultCase ;
     rdfs:label       "Немає протоку гарячої — забитий фільтр" ;
-    lab:faultSymptom "Немає протоку гарячої води" ;
-    lab:possibleCause "Фільтр забитий." ;
-    lab:solution     "Перекрийте подачу води та почистіть фільтр." ;
+    lab:faultSymptom "No hot water flow" ;
+    lab:possibleCause "Strainer blocked." ;
+    lab:solution     "Isolate water supply and clean strainer." ;
     lab:severity     "medium" ;
     lab:affectsComponent lab:ecodan_01_strainer ;
     lab:source       "BH79D188H02.pdf p.39" .
 
 lab:eco01_f17_noise_morning a lab:FaultCase ;
     rdfs:label       "Шум при розборі гарячої вранці — незакріплені труби" ;
-    lab:faultSymptom "Шум при розборі гарячої води (зазвичай гірше вранці)" ;
-    lab:possibleCause "Незакріплена розводка у вентиляційній шафі." ;
-    lab:solution     "Встановіть додаткові кріплення труб." ;
+    lab:faultSymptom "Noise during hot water draw off (typically worse in the morning)" ;
+    lab:possibleCause "Loose airing cupboard pipework." ;
+    lab:solution     "Install extra pipe fastening clips." ;
     lab:severity     "low" ;
     lab:source       "BH79D188H02.pdf p.39" .
 
 lab:eco01_f18_noisy_pump a lab:FaultCase ;
     rdfs:label       "Шумний насос — повітря в насосі" ;
-    lab:faultSymptom "Шумний насос" ;
-    lab:possibleCause "Повітря в насосі." ;
-    lab:solution     "Скористайтеся ручними та автоматичними повітровідвідниками для видалення повітря з системи. Долийте воду, якщо потрібно, щоб досягти 1 бар у первинному контурі." ;
+    lab:faultSymptom "Noisy pump" ;
+    lab:possibleCause "Air in pump." ;
+    lab:solution     "Use manual and automatic air vents to remove air from system. Top up water if necessary to achieve 1 bar on primary circuit." ;
     lab:severity     "medium" ;
     lab:affectsComponent lab:ecodan_01_circ_pump ;
     lab:source       "BH79D188H02.pdf p.39" .
 
 lab:eco01_f19_pump_jam_prevention a lab:FaultCase ;
     rdfs:label       "Насос вмикається на короткий час — антизаклинювальний цикл" ;
-    lab:faultSymptom "Насос вмикається на короткий час без причини" ;
-    lab:possibleCause "Антизаклинювальний механізм насоса для запобігання утворенню накипу." ;
-    lab:solution     "Нормальна робота, дій не потрібно." ;
+    lab:faultSymptom "Pump runs for a short time for no reason" ;
+    lab:possibleCause "Pump jam prevention mechanism to inhibit the build up of scale." ;
+    lab:solution     "Normal operation, no action necessary." ;
     lab:severity     "info" ;
     lab:affectsComponent lab:ecodan_01_circ_pump ;
     lab:source       "BH79D188H02.pdf p.39" .
 
 lab:eco01_f20_hot_water_cold_tap a lab:FaultCase ;
     rdfs:label       "Тепла вода з холодного крана — труби поряд з опаленням" ;
-    lab:faultSymptom "Гаряча або тепла вода з холодного крана" ;
-    lab:possibleCause "Якщо вода стає холодною через хвилину чи більше — труба нагрівається від трубопроводу опалення." ;
-    lab:solution     "Заізолюйте або перепрокладіть трубопровід." ;
+    lab:faultSymptom "Hot or warm water from cold tap" ;
+    lab:possibleCause "If tap runs cold after a minute or so, pipe is picking up heat from heating pipe work." ;
+    lab:solution     "Insulate / re-route pipe work." ;
     lab:severity     "low" ;
     lab:source       "BH79D188H02.pdf p.39" .
 
 lab:eco01_f21_heating_mode_selected a lab:FaultCase ;
     rdfs:label       "Опалення не виходить на задану — обраний неробочий режим" ;
-    lab:faultSymptom "Опалення не досягає заданої температури" ;
-    lab:possibleCause "Обрано режим заборони, розкладу або відпустки." ;
-    lab:solution     "Перевірте налаштування та змініть на потрібний режим." ;
+    lab:faultSymptom "Heating system does not get up to set temperature" ;
+    lab:possibleCause "Prohibit, schedule timer or holiday mode selected." ;
+    lab:solution     "Check settings and change as appropriate." ;
     lab:severity     "low" ;
     lab:source       "BH79D188H02.pdf p.39" .
 
 lab:eco01_f22_radiators_undersized a lab:FaultCase ;
     rdfs:label       "Опалення не виходить на задану — недостатньо радіаторів" ;
-    lab:faultSymptom "Опалення не досягає заданої температури" ;
-    lab:possibleCause "Неправильно підібрані радіатори." ;
-    lab:solution     "Звʼяжіться з монтажником." ;
+    lab:faultSymptom "Heating system does not get up to set temperature" ;
+    lab:possibleCause "Incorrectly sized radiators." ;
+    lab:solution     "Contact installer." ;
     lab:severity     "medium" ;
     lab:source       "BH79D188H02.pdf p.39" .
 
 lab:eco01_f23_sensor_misplaced a lab:FaultCase ;
     rdfs:label       "Опалення не виходить на задану — датчик у нерепрезентативному місці" ;
-    lab:faultSymptom "Опалення не досягає заданої температури" ;
-    lab:possibleCause "Кімната, де розташований датчик температури, має іншу температуру, ніж решта дому." ;
-    lab:solution     "Перемістіть датчик температури у більш репрезентативну кімнату." ;
+    lab:faultSymptom "Heating system does not get up to set temperature" ;
+    lab:possibleCause "The room in which the temperature sensor is located is at a different temperature to the rest of the house." ;
+    lab:solution     "Reposition the temperature sensor to a more suitable room." ;
     lab:severity     "low" ;
     lab:affectsComponent lab:ecodan_01_thermistors_indoor ;
     lab:source       "BH79D188H02.pdf p.39" .
 
 lab:eco01_f24_wireless_battery a lab:FaultCase ;
     rdfs:label       "Опалення не виходить на задану — сіла батарея у бездротовому пульті" ;
-    lab:faultSymptom "Опалення не досягає заданої температури" ;
-    lab:possibleCause "Проблема з батареєю (лише для бездротового керування)." ;
-    lab:solution     "Перевірте заряд батареї та замініть, якщо розряджена." ;
+    lab:faultSymptom "Heating system does not get up to set temperature" ;
+    lab:possibleCause "Battery problem (wireless control only)." ;
+    lab:solution     "Check the battery power and replace if flat." ;
     lab:severity     "low" ;
     lab:affectsComponent lab:ecodan_01_wireless_receiver ;
     lab:source       "BH79D188H02.pdf p.39" .
 
 lab:eco01_f25_mech_noise_heaters a lab:FaultCase ;
     rdfs:label       "Механічний шум — нагрівачі вмикаються/вимикаються" ;
-    lab:faultSymptom "Механічний шум з циліндра" ;
-    lab:possibleCause "Нагрівачі вмикаються/вимикаються." ;
-    lab:solution     "Нормальна робота, дій не потрібно." ;
+    lab:faultSymptom "Mechanical noise heard coming from the cylinder unit" ;
+    lab:possibleCause "Heaters switching on/off." ;
+    lab:solution     "Normal operation, no action required." ;
     lab:severity     "info" ;
     lab:source       "BH79D188H02.pdf p.39" .
 
 lab:eco01_f26_mech_noise_3way a lab:FaultCase ;
     rdfs:label       "Механічний шум — трихідний клапан змінює позицію" ;
-    lab:faultSymptom "Механічний шум з циліндра" ;
-    lab:possibleCause "Трихідний клапан перемикає позицію між режимами ГВП та опалення." ;
-    lab:solution     "Нормальна робота, дій не потрібно." ;
+    lab:faultSymptom "Mechanical noise heard coming from the cylinder unit" ;
+    lab:possibleCause "3-way valve changing position between DHW and heating mode." ;
+    lab:solution     "Normal operation, no action necessary." ;
     lab:severity     "info" ;
     lab:affectsComponent lab:ecodan_01_three_way_valve ;
     lab:source       "BH79D188H02.pdf p.39" .
 
 lab:eco01_f27_room_warms_after_dhw a lab:FaultCase ;
     rdfs:label       "Кімната нагрівається після завершення ГВП" ;
-    lab:faultSymptom "Після ГВП температура у кімнаті трохи підвищується" ;
-    lab:possibleCause "Наприкінці режиму ГВП трихідний клапан спрямовує гарячу воду з циліндра у контур опалення, щоб запобігти перегріву компонентів циліндра." ;
-    lab:solution     "Нормальна робота, дій не потрібно." ;
+    lab:faultSymptom "After DHW operation room temperature rises a little" ;
+    lab:possibleCause "At the end of DHW mode 3-way valve diverts hot water away from cylinder into space heating circuit to prevent cylinder components from overheating." ;
+    lab:solution     "Normal operation, no action necessary." ;
     lab:severity     "info" ;
     lab:source       "BH79D188H02.pdf p.39" .
 
 lab:eco01_f28_economy_pump_too_short a lab:FaultCase ;
     rdfs:label       "Опалення довго в standby — економ-таймер насоса занадто короткий" ;
-    lab:faultSymptom "Режим опалення довго в очікуванні (не запускається плавно)" ;
-    lab:possibleCause "Встановлено надто короткий час для 'Економ-режиму насоса'. (Сервісне меню → Додаткові налаштування → Економ-режим насоса)." ;
-    lab:solution     "Збільшіть значення 'Економ-режиму насоса'." ;
+    lab:faultSymptom "Heating mode has been on standby for a long time (does not start operation smoothly)" ;
+    lab:possibleCause "Duration is set to excessively short time at 'Economy setting for pump'. (Go to 'Service menu' → 'Auxiliary setting' → 'Economy setting for pump')." ;
+    lab:solution     "Set 'Economy setting for pump' longer." ;
     lab:severity     "low" ;
     lab:affectsComponent lab:ecodan_01_circ_pump ;
     lab:source       "BH79D188H02.pdf p.39" .
 
 lab:eco01_f29_emitter_hot_during_dhw a lab:FaultCase ;
     rdfs:label       "Радіатор гарячий під час ГВП — несправний трихідний клапан" ;
-    lab:faultSymptom "Радіатор гарячий у режимі ГВП (температура у кімнаті підвищується)" ;
-    lab:possibleCause "У трихідному клапані можуть бути сторонні предмети, або гаряча вода може потрапляти у контур опалення через несправність." ;
-    lab:solution     "Вручну перемкніть трихідний клапан кілька разів, щоб перевірити, чи зникне проблема (див. сервісну інструкцію). Якщо проблема залишається — замініть котушку трихідного клапана. Якщо це не допомагає — замініть клапан повністю." ;
+    lab:faultSymptom "Heating emitter is hot in the DHW mode (the room temperature rises)" ;
+    lab:possibleCause "The 3-way valve may have foreign objects in it, or hot water may flow to the heating side due to malfunctions." ;
+    lab:solution     "Manually override the 3-way valve several times to check whether the problem will be solved (refer to service manual). If the problem persists, replace the 3-way valve coil with a new one. If still no change, replace the entire 3-way valve." ;
     lab:severity     "high" ;
     lab:affectsComponent lab:ecodan_01_three_way_valve ;
     lab:source       "BH79D188H02.pdf p.39" .
@@ -388,172 +388,172 @@ lab:eco01_f29_emitter_hot_during_dhw a lab:FaultCase ;
 lab:err_L1 a lab:ErrorCode ;
     rdfs:label           "L1 — перегрів бустер-нагрівача" ;
     lab:codeId           "L1" ;
-    lab:errorDescription "Виявлено перегрів бустер-нагрівача." ;
-    lab:errorAction      "Можливо, знижений проток. Перевірте: витоки води, забитий фільтр, роботу насоса. Код може відображатися під час заповнення первинного контуру — завершіть заповнення та скиньте код помилки." ;
+    lab:errorDescription "Booster heater overheat detection." ;
+    lab:errorAction      "Flow rate may be reduced. Check for: water leakage, strainer blockage, pump function. Error code may display during filling of primary circuit — complete filling and reset error code." ;
     lab:severity         "high" ;
     lab:source           "BH79D188H02.pdf p.40" .
 
 lab:err_L2 a lab:ErrorCode ;
     rdfs:label           "L2 — несправність термістора THW3 (бустер)" ;
     lab:codeId           "L2" ;
-    lab:errorDescription "Несправність термістора бустер-нагрівача (THW3)." ;
-    lab:errorAction      "Перевірте опір термістора." ;
+    lab:errorDescription "Booster heater thermistor (THW3) failure." ;
+    lab:errorAction      "Check the resistance of the thermistor." ;
     lab:severity         "medium" ;
     lab:source           "BH79D188H02.pdf p.40" .
 
 lab:err_L3 a lab:ErrorCode ;
     rdfs:label           "L3 — захист від перегріву циркуляційної води" ;
     lab:codeId           "L3" ;
-    lab:errorDescription "Захист від перегріву температури циркуляційної води." ;
-    lab:errorAction      "Див. дії для L1." ;
+    lab:errorDescription "Circulation water temperature overheat protection." ;
+    lab:errorAction      "See Action for L1." ;
     lab:severity         "high" ;
     lab:source           "BH79D188H02.pdf p.40" .
 
 lab:err_L4 a lab:ErrorCode ;
     rdfs:label           "L4 — захист від перегріву води у баку" ;
     lab:codeId           "L4" ;
-    lab:errorDescription "Захист від перегріву води у баку." ;
-    lab:errorAction      "Перевірте занурювальний ТЕН та його контактор." ;
+    lab:errorDescription "Tank water temperature overheat protection." ;
+    lab:errorAction      "Check the immersion heater and its contactor." ;
     lab:severity         "high" ;
     lab:source           "BH79D188H02.pdf p.40" .
 
 lab:err_L5 a lab:ErrorCode ;
     rdfs:label           "L5 — несправність внутрішніх термісторів (TH1, TH2, THW1, THW2, THW5B)" ;
     lab:codeId           "L5" ;
-    lab:errorDescription "Несправність термісторів внутрішнього блоку (TH1, TH2, THW1, THW2, THW5B)." ;
-    lab:errorAction      "Перевірте опір термістора." ;
+    lab:errorDescription "Indoor unit temperature thermistor (TH1, TH2, THW1, THW2, THW5B) failure." ;
+    lab:errorAction      "Check the resistance of the thermistor." ;
     lab:severity         "medium" ;
     lab:source           "BH79D188H02.pdf p.40" .
 
 lab:err_L6 a lab:ErrorCode ;
     rdfs:label           "L6 — захист від замерзання циркуляційної води" ;
     lab:codeId           "L6" ;
-    lab:errorDescription "Захист від замерзання циркуляційної води." ;
-    lab:errorAction      "Див. дії для L1." ;
+    lab:errorDescription "Circulation water freeze protection." ;
+    lab:errorAction      "See Action for L1." ;
     lab:severity         "high" ;
     lab:source           "BH79D188H02.pdf p.40" .
 
 lab:err_L7 a lab:ErrorCode ;
     rdfs:label           "L7 — відмова трихідного клапана" ;
     lab:codeId           "L7" ;
-    lab:errorDescription "Відмова трихідного клапана." ;
-    lab:errorAction      "Перевірте рух трихідного клапана." ;
+    lab:errorDescription "3-way valve failure." ;
+    lab:errorAction      "Check the motion of the 3-way valve." ;
     lab:severity         "high" ;
     lab:source           "BH79D188H02.pdf p.40" .
 
 lab:err_L8 a lab:ErrorCode ;
     rdfs:label           "L8 — помилка режиму опалення" ;
     lab:codeId           "L8" ;
-    lab:errorDescription "Помилка режиму опалення." ;
-    lab:errorAction      "Заново закріпіть всі термістори, що зміщені або відʼєднані." ;
+    lab:errorDescription "Heating operation error." ;
+    lab:errorAction      "Re-attach any thermistors that have become dislodged." ;
     lab:severity         "medium" ;
     lab:source           "BH79D188H02.pdf p.40" .
 
 lab:err_L9 a lab:ErrorCode ;
     rdfs:label           "L9 — низький проток у первинному контурі" ;
     lab:codeId           "L9" ;
-    lab:errorDescription "Низький проток у первинному контурі (виявлено реле протоку)." ;
-    lab:errorAction      "Див. дії для L1. Якщо реле протоку не працює — замініть його. Клапани насоса можуть бути гарячими — будьте обережні." ;
+    lab:errorDescription "Low primary circuit flow rate detected by flow switch." ;
+    lab:errorAction      "See Action for L1. If the flow switch itself does not work, replace it. The pump valves may be hot — please take care." ;
     lab:severity         "high" ;
     lab:source           "BH79D188H02.pdf p.40" .
 
 lab:err_J0 a lab:ErrorCode ;
     rdfs:label           "J0 — немає звʼязку FTC3 ↔ бездротовий приймач" ;
     lab:codeId           "J0" ;
-    lab:errorDescription "Збій звʼязку між FTC3 та бездротовим приймачем." ;
-    lab:errorAction      "Перевірте зʼєднувальний кабель на пошкодження або погані контакти." ;
+    lab:errorDescription "Communication failure between FTC3 and wireless receiver." ;
+    lab:errorAction      "Check connection cable for damage or loose connections." ;
     lab:severity         "medium" ;
     lab:source           "BH79D188H02.pdf p.40" .
 
 lab:err_J1_J8 a lab:ErrorCode ;
     rdfs:label           "J1–J8 — немає звʼязку бездр. приймач ↔ пульт" ;
     lab:codeId           "J1-J8" ;
-    lab:errorDescription "Збій звʼязку між бездротовим приймачем та бездротовим пультом дистанційного керування." ;
-    lab:errorAction      "Перевірте, чи не розряджена батарея бездротового пульта. Перевірте звʼязування між приймачем та пультом. Протестуйте бездротовий звʼязок (див. інструкцію бездротової системи)." ;
+    lab:errorDescription "Communication failure between wireless receiver and wireless remote controller." ;
+    lab:errorAction      "Check wireless remote controller's battery is not flat. Check pairing between wireless receiver and wireless remote controller. Test wireless communication (see manual of wireless system)." ;
     lab:severity         "medium" ;
     lab:source           "BH79D188H02.pdf p.40" .
 
 lab:err_E0_E5 a lab:ErrorCode ;
     rdfs:label           "E0–E5 — немає звʼязку головного контролера з FTC3" ;
     lab:codeId           "E0-E5" ;
-    lab:errorDescription "Збій звʼязку між головним контролером та FTC3." ;
-    lab:errorAction      "Перевірте зʼєднувальний кабель на пошкодження або погані контакти." ;
+    lab:errorDescription "Communication failure between main controller and FTC3." ;
+    lab:errorAction      "Check connection cable for damage or loose connections." ;
     lab:severity         "medium" ;
     lab:source           "BH79D188H02.pdf p.40" .
 
 lab:err_E6_EF a lab:ErrorCode ;
     rdfs:label           "E6–EF — немає звʼязку FTC3 ↔ зовнішній блок" ;
     lab:codeId           "E6-EF" ;
-    lab:errorDescription "Збій звʼязку між FTC3 та зовнішнім блоком." ;
-    lab:errorAction      "Переконайтеся, що зовнішній блок не вимкнено. Перевірте зʼєднувальний кабель на пошкодження або погані контакти. Звіртеся з сервісною інструкцією зовнішнього блоку." ;
+    lab:errorDescription "Communication failure between FTC3 and outdoor unit." ;
+    lab:errorAction      "Check that the outdoor unit has not been turned off. Check connection cable for damage or loose connections. Refer to outdoor unit service manual." ;
     lab:severity         "high" ;
     lab:source           "BH79D188H02.pdf p.40" .
 
 lab:err_E9 a lab:ErrorCode ;
     rdfs:label           "E9 — зовнішній блок не отримує сигнал від внутрішнього" ;
     lab:codeId           "E9" ;
-    lab:errorDescription "Зовнішній блок не отримує сигнал від внутрішнього блоку." ;
-    lab:errorAction      "Перевірте, що обидва блоки увімкнено. Перевірте зʼєднувальний кабель. Звіртеся з сервісною інструкцією зовнішнього блоку." ;
+    lab:errorDescription "Outdoor unit receives no signal from indoor unit." ;
+    lab:errorAction      "Check both units are switched on. Check connection cable for damage or loose connections. Refer to outdoor unit service manual." ;
     lab:severity         "high" ;
     lab:source           "BH79D188H02.pdf p.40" .
 
 lab:err_U_F a lab:ErrorCode ;
     rdfs:label           "U*, F* — несправність зовнішнього блоку" ;
     lab:codeId           "U*/F*" ;
-    lab:errorDescription "Несправність зовнішнього блоку." ;
-    lab:errorAction      "Звіртеся з сервісною інструкцією зовнішнього блоку." ;
+    lab:errorDescription "Outdoor unit failure." ;
+    lab:errorAction      "Refer to outdoor unit service manual." ;
     lab:severity         "high" ;
     lab:source           "BH79D188H02.pdf p.40" .
 
 # --- Сервісні деталі (регламент ТО, page 42) ----------------------------
 
 lab:mp_prv a lab:MaintenancePart ;
-    rdfs:label            "Запобіжний клапан тиску (PRV)" ;
+    rdfs:label            "Pressure relief valve (PRV)" ;
     lab:replaceEveryYears 6 ;
-    lab:typicalFailure    "Витік води через мідну корозію (знецинкування)." ;
+    lab:typicalFailure    "Water leakage due to copper corrosion (dezincification)." ;
     lab:source            "BH79D188H02.pdf p.42" .
 
 lab:mp_air_vent a lab:MaintenancePart ;
-    rdfs:label            "Повітровідвідник (авто/ручний)" ;
+    rdfs:label            "Air vent (Auto/Manual)" ;
     lab:replaceEveryYears 6 ;
-    lab:typicalFailure    "Витік води через мідну корозію (знецинкування)." ;
+    lab:typicalFailure    "Water leakage due to copper corrosion (dezincification)." ;
     lab:source            "BH79D188H02.pdf p.42" .
 
 lab:mp_drain_cock a lab:MaintenancePart ;
-    rdfs:label            "Зливний кран (первинний контур)" ;
+    rdfs:label            "Drain cock (Primary circuit)" ;
     lab:replaceEveryYears 6 ;
-    lab:typicalFailure    "Витік води через мідну корозію (знецинкування)." ;
+    lab:typicalFailure    "Water leakage due to copper corrosion (dezincification)." ;
     lab:source            "BH79D188H02.pdf p.42" .
 
 lab:mp_flexible_hose a lab:MaintenancePart ;
-    rdfs:label            "Гнучкий шланг" ;
+    rdfs:label            "Flexible hose" ;
     lab:replaceEveryYears 6 ;
-    lab:typicalFailure    "Витік води через мідну корозію (знецинкування)." ;
+    lab:typicalFailure    "Water leakage due to copper corrosion (dezincification)." ;
     lab:source            "BH79D188H02.pdf p.42" .
 
 lab:mp_manometer a lab:MaintenancePart ;
-    rdfs:label            "Манометр" ;
+    rdfs:label            "Manometer" ;
     lab:replaceEveryYears 6 ;
-    lab:typicalFailure    "Витік води через мідну корозію (знецинкування)." ;
+    lab:typicalFailure    "Water leakage due to copper corrosion (dezincification)." ;
     lab:source            "BH79D188H02.pdf p.42" .
 
 lab:mp_inlet_control_group a lab:MaintenancePart ;
-    rdfs:label            "Вхідна група керування (ICG, опція UK)" ;
+    rdfs:label            "Inlet control group (ICG, optional UK)" ;
     lab:replaceEveryYears 6 ;
-    lab:typicalFailure    "Витік води через мідну корозію (знецинкування)." ;
+    lab:typicalFailure    "Water leakage due to copper corrosion (dezincification)." ;
     lab:source            "BH79D188H02.pdf p.42" .
 
 lab:mp_immersion_heater a lab:MaintenancePart ;
-    rdfs:label            "Занурювальний ТЕН (інспекція)" ;
+    rdfs:label            "Immersion heater (inspection)" ;
     lab:checkEveryYears   2 ;
-    lab:typicalFailure    "Витік на землю спричиняє спрацювання автомата (ТЕН завжди ВИМК)." ;
+    lab:typicalFailure    "Earth leakage causing circuit breaker to activate (heater always OFF)." ;
     lab:source            "BH79D188H02.pdf p.42" .
 
 lab:mp_pump a lab:MaintenancePart ;
-    rdfs:label            "Циркуляційний насос (інспекція)" ;
+    rdfs:label            "Circulation pump (inspection)" ;
     lab:checkEveryYears   3 ;
     lab:replaceEveryHours 20000 ;
-    lab:typicalFailure    "Відмова насоса (прокладку слід замінювати кожні 20 000 год або 3 роки)." ;
+    lab:typicalFailure    "Pump failure (gasket should be replaced every 20 000 h or 3 yrs)." ;
     lab:source            "BH79D188H02.pdf p.42" .
 
 # --- Привʼязка до ecodan_01 ---------------------------------------------

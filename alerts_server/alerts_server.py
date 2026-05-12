@@ -61,11 +61,15 @@ CREATE TABLE IF NOT EXISTS alerts (
     confidence       REAL    NOT NULL DEFAULT 1.0,
     metrics_snapshot TEXT    NOT NULL DEFAULT '{}',   -- JSON
     bounds_snapshot  TEXT    NOT NULL DEFAULT '{}',   -- JSON
+    diagnoses        TEXT    NOT NULL DEFAULT '[]',   -- JSON array of Diagnosis
     raised_at        TEXT    NOT NULL,
     acknowledged_at  TEXT,
     acknowledged_by  TEXT,
     resolved_at      TEXT
 );
+-- Migration: older DBs may not have the `diagnoses` column.
+-- SQLite ignores the error if column already exists in the version we ship,
+-- but for upgrade we attempt ALTER TABLE in init_db().
 CREATE INDEX IF NOT EXISTS idx_alerts_device   ON alerts(device_id);
 CREATE INDEX IF NOT EXISTS idx_alerts_raised   ON alerts(raised_at DESC);
 CREATE INDEX IF NOT EXISTS idx_alerts_resolved ON alerts(resolved_at);
@@ -96,6 +100,15 @@ def init_db() -> None:
     DB_PATH.parent.mkdir(parents=True, exist_ok=True)
     with _db_lock, db() as conn:
         conn.executescript(SCHEMA)
+        # Lightweight migration: add `diagnoses` column to old DBs without
+        # forcing operators to drop the database.
+        try:
+            conn.execute(
+                "ALTER TABLE alerts ADD COLUMN diagnoses TEXT NOT NULL DEFAULT '[]'"
+            )
+            log.info("DB migration: added alerts.diagnoses column")
+        except sqlite3.OperationalError:
+            pass  # column already present
     log.info("DB ready at %s", DB_PATH)
 
 
@@ -125,6 +138,7 @@ def _row_to_alert(row: sqlite3.Row) -> dict:
     d["anomaly_codes"]    = json.loads(d["anomaly_codes"])
     d["metrics_snapshot"] = json.loads(d["metrics_snapshot"])
     d["bounds_snapshot"]  = json.loads(d["bounds_snapshot"])
+    d["diagnoses"]        = json.loads(d.get("diagnoses") or "[]")
     if d["resolved_at"]:
         d["status"] = "усунено"
     elif d["acknowledged_at"]:
@@ -169,14 +183,18 @@ def create_alert(payload: AlertPayload):
         cur = conn.execute(
             """INSERT INTO alerts
                (device_id, severity, anomaly_codes, explanation, confidence,
-                metrics_snapshot, bounds_snapshot, raised_at)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+                metrics_snapshot, bounds_snapshot, diagnoses, raised_at)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
             (
                 payload.device_id, payload.severity,
                 json.dumps(payload.anomaly_codes, ensure_ascii=False),
                 payload.explanation, payload.confidence,
                 json.dumps(payload.metrics_snapshot, ensure_ascii=False),
                 json.dumps(payload.bounds_snapshot, ensure_ascii=False),
+                json.dumps(
+                    [d.model_dump() for d in payload.diagnoses],
+                    ensure_ascii=False,
+                ),
                 payload.timestamp,
             ),
         )
@@ -478,6 +496,34 @@ def upload_page(request: Request):
 
 
 # ─── Ontology / Upload proxies (UI lives here, processing in ontology_api) ────
+
+def _proxy_ontology(device_id: str, path: str) -> list[dict]:
+    try:
+        r = requests.get(f"{ONTOLOGY_API}/device/{device_id}/{path}", timeout=4)
+        if r.ok:
+            return r.json()
+    except Exception as e:
+        log.warning("Ontology API proxy failed for %s/%s: %s", device_id, path, e)
+    return []
+
+
+@app.get("/api/devices/{device_id}/faults",
+         summary="Випадки несправностей з онтології")
+def device_faults(device_id: str):
+    return _proxy_ontology(device_id, "faults")
+
+
+@app.get("/api/devices/{device_id}/error-codes",
+         summary="Коди помилок контролера з онтології")
+def device_error_codes(device_id: str):
+    return _proxy_ontology(device_id, "error-codes")
+
+
+@app.get("/api/devices/{device_id}/maintenance",
+         summary="Сервісні деталі з регламентом ТО")
+def device_maintenance(device_id: str):
+    return _proxy_ontology(device_id, "maintenance")
+
 
 @app.get("/api/ontology/graph",
          summary="Граф онтології (вузли + ребра) для візуалізації")

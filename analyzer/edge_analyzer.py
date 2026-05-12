@@ -18,12 +18,17 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 #імпорт спільних схем
 from shared.schemas import (
     AlertPayload,
+    Diagnosis,
     MetricsMessage,
     StateMessage,
     TOPIC_METRICS_WILDCARD,
     TOPIC_STATE,
     utcnow_iso,
 )
+
+# Local import after sys.path tweak so editor & runtime agree.
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from diagnose import DiagnosticEngine  # noqa: E402
 
 load_dotenv(Path(__file__).resolve().parent.parent / ".env")
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
@@ -47,6 +52,13 @@ BOUNDS_FETCHED: dict[str, float] = {}
 LAST_STATE:  dict[str, str]   = {}
 #Зберігає час останнього alert-нагадування
 LAST_REMIND: dict[str, float] = {}
+
+# Двигун збагачення анома­лій причинами та рішеннями з онтології.
+# TTL кешу синхронізований з BOUNDS_TTL_SEC щоб разом оновлювати весь контекст.
+DIAGNOSER = DiagnosticEngine(
+    ontology_api_url=ONTOLOGY_API,
+    cache_ttl_sec=BOUNDS_TTL_SEC,
+)
 
 def get_bounds(device_id: str) -> dict:
     now = time.time()
@@ -103,6 +115,12 @@ def analyze(msg: MetricsMessage) -> StateMessage:
     anomalies = rule_based_checks(metrics, bounds)
     state = classify(anomalies)
 
+    # Збагачуємо причиною/рішенням/кодом помилки лише в проблемних станах,
+    # щоб не молотити онтологічний API на кожен метричний tick у нормі.
+    diagnoses: list[Diagnosis] = (
+        DIAGNOSER.enrich(anomalies, msg.device_id) if state != "normal" else []
+    )
+
     return StateMessage(
         device_id=msg.device_id,
         timestamp=utcnow_iso(),
@@ -110,6 +128,7 @@ def analyze(msg: MetricsMessage) -> StateMessage:
         anomalies=anomalies,
         confidence=1.0,
         explanation=f"rule-checks: {len(anomalies)} matched",
+        diagnoses=diagnoses,
     )
 
 #Перевіряє, чи треба повторно нагадати про проблему.
@@ -152,6 +171,7 @@ def forward_alert(state: StateMessage, metrics_dump: dict, bounds: dict) -> None
         confidence=state.confidence,
         metrics_snapshot=metrics_dump,
         bounds_snapshot=bounds,
+        diagnoses=state.diagnoses,
     )
     try:
         requests.post(
@@ -195,6 +215,8 @@ def on_message(client: mqtt.Client, _userdata, mqtt_msg: mqtt.MQTTMessage) -> No
     log.info("%s → %s anomalies=%s%s",
              state.device_id, state.state, state.anomalies,
              "  → ALERT FORWARDED" if should_forward else "")
+    for diag in state.diagnoses:
+        log.info("  · %s", DIAGNOSER.format_for_log(diag))
 
 
 def on_connect(client, *_):

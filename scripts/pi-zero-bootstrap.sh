@@ -44,6 +44,14 @@ fi
 echo "  ✓ $(du -h "$AE_FILE" | cut -f1) $AE_FILE"
 
 echo "[2/4] Venv + залежності…"
+
+# numpy динамічно лінкується з libopenblas — її нема в Pi OS Lite за дефолтом.
+if ! ldconfig -p 2>/dev/null | grep -q libopenblas; then
+    echo "  ⚠ libopenblas відсутня — потрібна для numpy."
+    echo "    Запустіть: sudo apt install -y libopenblas0"
+    exit 1
+fi
+
 if [[ ! -x "$VENV_PY" ]]; then
     echo "  створюю venv у $VENV_DIR/"
     python3 -m venv "$VENV_DIR" || {

@@ -141,6 +141,129 @@ def components(device_id: str):
     ])
 
 
+@app.get("/device/<device_id>/faults")
+def device_faults(device_id: str):
+    """Випадки несправностей з онтології."""
+    rows = sparql_query(f"""
+        SELECT ?f ?label ?symptom ?cause ?solution ?severity ?affects ?affectsName
+        WHERE {{
+            lab:{device_id} lab:hasFaultCase ?f .
+            OPTIONAL {{ ?f rdfs:label              ?label }}
+            OPTIONAL {{ ?f lab:faultSymptom        ?symptom }}
+            OPTIONAL {{ ?f lab:possibleCause       ?cause }}
+            OPTIONAL {{ ?f lab:solution            ?solution }}
+            OPTIONAL {{ ?f lab:severity            ?severity }}
+            OPTIONAL {{ ?f lab:affectsComponent    ?affects }}
+            OPTIONAL {{ ?f lab:affectsComponentName ?affectsName }}
+        }}
+        ORDER BY ?f
+    """)
+    return jsonify([
+        {
+            "id":        r["f"].split("#")[-1],
+            "label":     r.get("label"),
+            "symptom":   r.get("symptom"),
+            "cause":     r.get("cause"),
+            "solution":  r.get("solution"),
+            "severity":  r.get("severity"),
+            "affects":   r["affects"].split("#")[-1] if "affects" in r else r.get("affectsName"),
+        }
+        for r in rows
+    ])
+
+
+@app.get("/device/<device_id>/error-codes")
+def device_error_codes(device_id: str):
+    """Коди помилок контролера з онтології."""
+    rows = sparql_query(f"""
+        SELECT ?e ?label ?code ?desc ?action ?severity WHERE {{
+            lab:{device_id} lab:hasErrorCode ?e .
+            OPTIONAL {{ ?e rdfs:label           ?label }}
+            OPTIONAL {{ ?e lab:codeId           ?code }}
+            OPTIONAL {{ ?e lab:errorDescription ?desc }}
+            OPTIONAL {{ ?e lab:errorAction      ?action }}
+            OPTIONAL {{ ?e lab:severity         ?severity }}
+        }}
+        ORDER BY ?code
+    """)
+    return jsonify([
+        {
+            "id":          r["e"].split("#")[-1],
+            "label":       r.get("label"),
+            "code":        r.get("code"),
+            "description": r.get("desc"),
+            "action":      r.get("action"),
+            "severity":    r.get("severity"),
+        }
+        for r in rows
+    ])
+
+
+@app.get("/device/<device_id>/maintenance")
+def device_maintenance(device_id: str):
+    """Сервісні деталі з регламентом ТО."""
+    rows = sparql_query(f"""
+        SELECT ?m ?label ?ry ?rh ?cy ?failure WHERE {{
+            lab:{device_id} lab:hasMaintenancePart ?m .
+            OPTIONAL {{ ?m rdfs:label             ?label }}
+            OPTIONAL {{ ?m lab:replaceEveryYears  ?ry }}
+            OPTIONAL {{ ?m lab:replaceEveryHours  ?rh }}
+            OPTIONAL {{ ?m lab:checkEveryYears    ?cy }}
+            OPTIONAL {{ ?m lab:typicalFailure     ?failure }}
+        }}
+        ORDER BY ?m
+    """)
+    return jsonify([
+        {
+            "id":                  r["m"].split("#")[-1],
+            "label":               r.get("label"),
+            "replace_every_years": int(r["ry"]) if "ry" in r else None,
+            "replace_every_hours": int(r["rh"]) if "rh" in r else None,
+            "check_every_years":   int(r["cy"]) if "cy" in r else None,
+            "typical_failure":     r.get("failure"),
+        }
+        for r in rows
+    ])
+
+
+@app.get("/device/<device_id>/diagnostic-context")
+def diagnostic_context(device_id: str):
+    """Бандл для edge-аналізатора: межі + несправності + коди помилок.
+
+    Pi-аналізатор кешує цю відповідь на BOUNDS_TTL_SEC і використовує її,
+    щоб збагачувати alerts причиною/рішенням/кодом контролера без додаткових
+    HTTP-запитів. Один endpoint замість трьох — менше round-trip часу.
+    """
+    bounds_rows = sparql_query(f"""
+        SELECT ?minCOP ?maxPower ?maxFlow ?minFlow WHERE {{
+            OPTIONAL {{ lab:{device_id} lab:minCOP         ?minCOPExplicit }}
+            OPTIONAL {{ lab:{device_id} lab:nominalCOP     ?nomCOP }}
+            BIND(COALESCE(?minCOPExplicit, ?nomCOP) AS ?minCOP)
+            OPTIONAL {{ lab:{device_id} lab:maxPowerKw     ?maxPowerExplicit }}
+            OPTIONAL {{ lab:{device_id} lab:nominalPowerKw ?nomPower }}
+            BIND(COALESCE(?maxPowerExplicit, ?nomPower) AS ?maxPower)
+            OPTIONAL {{ lab:{device_id} lab:maxFlowTempC   ?maxFlow }}
+            OPTIONAL {{ lab:{device_id} lab:minFlowTempC   ?minFlow }}
+        }}
+    """)
+    bounds: dict = {}
+    if bounds_rows:
+        r = bounds_rows[0]
+        bounds = {
+            "min_cop":      float(r["minCOP"])   if "minCOP"   in r else None,
+            "max_power_kw": float(r["maxPower"]) if "maxPower" in r else None,
+            "max_flow_c":   float(r["maxFlow"])  if "maxFlow"  in r else None,
+            "min_flow_c":   float(r["minFlow"])  if "minFlow"  in r else None,
+        }
+
+    return jsonify({
+        "device_id":   device_id,
+        "bounds":      bounds,
+        "faults":      device_faults(device_id).json,
+        "error_codes": device_error_codes(device_id).json,
+    })
+
+
 def _local_name(uri: str) -> str:
     return uri.split("#")[-1].split("/")[-1]
 
