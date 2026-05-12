@@ -70,5 +70,5 @@
 
 {% block scripts %}
 <script>const DEVICE_ID = {{ device_id|tojson }};</script>
-<script src="/static/device_detail.js"></script>
+<script src="/static/device_detail.js?v={{ asset_version }}"></script>
 {% endblock %}

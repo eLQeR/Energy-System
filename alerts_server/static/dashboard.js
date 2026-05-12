@@ -56,6 +56,7 @@ function renderActiveAlerts(alerts) {
           <a href="/device/${esc(a.device_id)}">${esc(a.device_id)}</a>
         </div>
         <div class="codes">${a.anomaly_codes.map(code => esc(anomalyCodeText(code))).join("  ·  ")}</div>
+        ${renderDiagnoses(a.diagnoses || [], { compact: true, limit: 3, deviceId: a.device_id })}
         <div class="meta">
   ${fmtAge(a.raised_at)}
 </div>
@@ -177,6 +178,7 @@ function renderHistory(alerts) {
 <a href="/device/${esc(a.device_id)}">${esc(a.device_id)}</a>
 <span style="color:var(--normal);font-size:11px;"> · ${statusText(a.status)}</span>
 <div class="codes">${a.anomaly_codes.map(code => esc(anomalyCodeText(code))).join('  ·  ')}</div>
+        ${renderDiagnoses(a.diagnoses || [], { compact: true, limit: 3, deviceId: a.device_id })}
       </div>
     </div>
   `).join("");

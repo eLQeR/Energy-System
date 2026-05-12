@@ -309,75 +309,15 @@ function renderTimeline(alerts) {
   `).join("");
 }
 
-function renderDiagnoses(diagnoses) {
-  if (!diagnoses.length) return "";
-  const items = diagnoses.map(d => {
-    const sevColor = (typeof SEVERITY_COLOR !== 'undefined' && SEVERITY_COLOR[d.severity]) || "#8b949e";
-    if (d.kind === "error_code") {
-      return `
-        <div style="display:flex;gap:8px;align-items:flex-start;padding:6px 8px;
-                    background:var(--bg-elev);border-radius:4px;
-                    border-left:3px solid ${sevColor};margin-top:4px;">
-          <code style="color:${sevColor};font-weight:600;min-width:48px;">${esc(d.error_code || '?')}</code>
-          <div style="font-size:11px;line-height:1.4;">
-            <div style="color:var(--text);">${esc(d.error_description || '')}</div>
-            <div style="color:var(--text-muted);margin-top:2px;">→ ${esc(d.error_action || '')}</div>
-          </div>
-        </div>`;
-    }
-    if (d.kind === "fault") {
-      return `
-        <div style="padding:6px 8px;background:var(--bg-elev);border-radius:4px;
-                    border-left:3px solid ${sevColor};margin-top:4px;font-size:11px;line-height:1.4;">
-          <div style="color:var(--text);"><strong>Імовірна причина:</strong> ${esc(d.cause || '')}</div>
-          <div style="color:var(--text-muted);margin-top:2px;">→ ${esc(d.solution || '')}</div>
-          ${d.affects_component ? `<div style="color:var(--text-dim);margin-top:2px;">Компонент: <code>${esc(d.affects_component)}</code></div>` : ''}
-        </div>`;
-    }
-    return `
-      <div style="padding:6px 8px;background:var(--bg-elev);border-radius:4px;
-                  border-left:3px solid #8b949e;margin-top:4px;
-                  font-size:11px;color:var(--text-muted);font-style:italic;">
-        💡 ${esc(d.hint || '')}
-      </div>`;
-  }).join("");
-  return `<div style="margin-top:6px;">
-    <div style="font-size:10px;color:var(--text-dim);text-transform:uppercase;
-                letter-spacing:.5px;margin-bottom:2px;">Діагноз з онтології</div>
-    ${items}
-  </div>`;
-}
+// renderDiagnoses() винесено в common.js — щоб dashboard теж міг використовувати.
 
 // ──────────────────────────────────────────────────────────────────────
 // Знання з онтології: несправності, коди помилок, ТО.
 // Завантажуємо один раз — дані статичні до повторного reload-у онтології.
 // ──────────────────────────────────────────────────────────────────────
 
-const SEVERITY_COLOR = {
-  info:     "#79c0ff",
-  low:      "#3fb950",
-  medium:   "#d29922",
-  high:     "#f85149",
-  critical: "#ff4f4f",
-};
-
-const SEVERITY_LABEL_UK = {
-  info:     "інформ.",
-  low:      "низька",
-  medium:   "середня",
-  high:     "висока",
-  critical: "критична",
-};
-
-function _severityBadge(sev) {
-  if (!sev) return "";
-  const color = SEVERITY_COLOR[sev] || "#8b949e";
-  const text  = SEVERITY_LABEL_UK[sev] || sev;
-  return `<span style="display:inline-block;padding:1px 8px;border-radius:10px;
-          font-size:10px;background:${color}22;color:${color};
-          border:1px solid ${color}66;text-transform:uppercase;
-          letter-spacing:.5px;margin-left:8px;">${text}</span>`;
-}
+// SEVERITY_COLOR, SEVERITY_LABEL_UK і severityBadge() — у common.js
+const _severityBadge = severityBadge;
 
 let _ontologyLoaded = false;
 async function loadOntologyKnowledge() {

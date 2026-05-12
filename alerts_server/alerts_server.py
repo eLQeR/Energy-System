@@ -6,6 +6,7 @@ import os
 import sqlite3
 import sys
 import threading
+import time
 from collections import deque
 from contextlib import contextmanager
 from datetime import datetime, timedelta, timezone
@@ -40,6 +41,10 @@ INFLUX_BUCKET = os.getenv("INFLUX_BUCKET", "metrics")
 
 HERE      = Path(__file__).parent
 templates = Jinja2Templates(directory=str(HERE / "templates"))
+# Cache-busting: версію статичних ассетів зміщуємо за процесом —
+# при кожному рестарті alerts_server браузер автоматично підтягне свіжі JS/CSS.
+ASSET_VERSION = str(int(time.time()))
+templates.env.globals["asset_version"] = ASSET_VERSION
 
 app = FastAPI(
     title="Панель моніторингу тривог EnergyLab",
