@@ -1,0 +1,96 @@
+{% extends "base.html" %}
+{% block title %}Метрики — Cyber-Energy Lab{% endblock %}
+{% block content %}
+<div class="dash-toolbar" style="display:flex;gap:12px;align-items:center;
+     flex-wrap:wrap;margin-bottom:16px;">
+  <div>
+    <label style="font-size:11px;color:var(--text-dim);text-transform:uppercase;
+                   letter-spacing:.5px;display:block;">Пристрій</label>
+    <select id="dash-device" style="min-width:240px;padding:6px 10px;
+            background:var(--bg-elev);color:var(--text);border:1px solid var(--border);
+            border-radius:4px;"></select>
+  </div>
+  <div>
+    <label style="font-size:11px;color:var(--text-dim);text-transform:uppercase;
+                   letter-spacing:.5px;display:block;">Період</label>
+    <select id="dash-range" style="padding:6px 10px;background:var(--bg-elev);
+            color:var(--text);border:1px solid var(--border);border-radius:4px;">
+      <option value="60">Остання година</option>
+      <option value="360" selected>Останні 6 годин</option>
+      <option value="1440">Останні 24 години</option>
+    </select>
+  </div>
+  <div style="margin-left:auto;font-size:11px;color:var(--text-dim);">
+    <span id="dash-status">Завантаження…</span>
+  </div>
+</div>
+
+<div class="stats" style="display:grid;
+     grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px;margin-bottom:18px;">
+  <div class="panel stat-card">
+    <div class="stat-label">Поточний COP</div>
+    <div id="stat-cop" class="stat-value gauge-wrap">
+      <canvas id="cop-gauge" width="160" height="100"></canvas>
+      <div id="cop-text" class="gauge-text">—</div>
+    </div>
+  </div>
+  <div class="panel stat-card">
+    <div class="stat-label">Електрична потужність</div>
+    <div id="stat-power" class="stat-value">—</div>
+    <div class="stat-unit">кВт</div>
+  </div>
+  <div class="panel stat-card">
+    <div class="stat-label">Режим роботи</div>
+    <div id="stat-mode" class="stat-value mode-value">—</div>
+  </div>
+</div>
+
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
+  <div class="panel chart-panel">
+    <h3>Температурний режим (подача / зворотка / ΔT)</h3>
+    <div class="chart-box"><canvas id="chart-temps"></canvas></div>
+  </div>
+  <div class="panel chart-panel">
+    <h3>Динаміка ефективності (COP)</h3>
+    <div class="chart-box"><canvas id="chart-cop"></canvas></div>
+  </div>
+  <div class="panel chart-panel">
+    <h3>Динаміка енергоспоживання (за хв), кВт·год</h3>
+    <div class="chart-box"><canvas id="chart-energy-bar"></canvas></div>
+  </div>
+  <div class="panel chart-panel">
+    <h3>Накопичена енергія, кВт·год</h3>
+    <div class="chart-box"><canvas id="chart-energy-total"></canvas></div>
+  </div>
+</div>
+
+<style>
+  .stat-card { padding:14px 16px; display:flex; flex-direction:column; }
+  .stat-label { font-size:11px; color:var(--text-dim);
+                text-transform:uppercase; letter-spacing:.5px; }
+  .stat-value { font-size:28px; font-weight:600; color:var(--text);
+                margin-top:6px; line-height:1; }
+  .stat-unit { font-size:11px; color:var(--text-muted); margin-top:4px; }
+  .mode-value { font-size:18px; text-transform:uppercase; }
+  .gauge-wrap { position:relative; }
+  .gauge-text { position:absolute; left:0; right:0; top:55%;
+                text-align:center; font-size:22px; font-weight:600;
+                color:var(--text); pointer-events:none; }
+  .chart-panel { padding:14px 18px; }
+  .chart-panel h3 { margin:0 0 8px 0; font-size:13px;
+                    color:var(--text-muted); font-weight:500; }
+  /* Фіксована висота контейнера — інакше Chart.js (з maintainAspectRatio:false)
+     росте з кожним апдейтом і сторінка нескінченно тягнеться вниз. */
+  .chart-box { position: relative; height: 260px; width: 100%; }
+  .chart-box > canvas { position: absolute; inset: 0; width: 100% !important;
+                         height: 100% !important; }
+  .gauge-wrap { position: relative; height: 110px; width: 160px;
+                 margin: 4px auto 0 auto; }
+  .gauge-wrap > canvas { position: absolute; inset: 0; width: 100% !important;
+                          height: 100% !important; }
+</style>
+{% endblock %}
+
+{% block scripts %}
+<script src="/static/dashboards.js?v={{ asset_version }}"></script>
+{% endblock %}

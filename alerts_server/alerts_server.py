@@ -422,7 +422,9 @@ def device_history(device_id: str, minutes: int = Query(60, ge=1, le=1440)):
           |> filter(fn: (r) => r["_measurement"] == "equipment_metrics")
           |> filter(fn: (r) => r["device_id"] == "{device_id}")
           |> filter(fn: (r) => r["_field"] == "power_kw" or r["_field"] == "cop"
-                            or r["_field"] == "flow_temp_c" or r["_field"] == "return_temp_c")
+                            or r["_field"] == "flow_temp_c" or r["_field"] == "return_temp_c"
+                            or r["_field"] == "outdoor_temp_c" or r["_field"] == "energy_kwh"
+                            or r["_field"] == "delta_t_c")
           |> aggregateWindow(every: 1m, fn: mean, createEmpty: false)
           |> pivot(rowKey: ["_time"], columnKey: ["_field"], valueColumn: "_value")
           |> sort(columns: ["_time"])
@@ -438,12 +440,20 @@ def device_history(device_id: str, minutes: int = Query(60, ge=1, le=1440)):
     for table in tables:
         for rec in table.records:
             v = rec.values
+            flow = v.get("flow_temp_c")
+            ret  = v.get("return_temp_c")
+            delta = v.get("delta_t_c")
+            if delta is None and flow is not None and ret is not None:
+                delta = flow - ret
             points.append({
                 "timestamp":      v["_time"].strftime("%Y-%m-%dT%H:%M:%SZ"),
                 "power_kw":       v.get("power_kw"),
                 "cop":            v.get("cop"),
-                "flow_temp_c":    v.get("flow_temp_c"),
-                "return_temp_c":  v.get("return_temp_c"),
+                "flow_temp_c":    flow,
+                "return_temp_c":  ret,
+                "delta_t_c":      delta,
+                "outdoor_temp_c": v.get("outdoor_temp_c"),
+                "energy_kwh":     v.get("energy_kwh"),
             })
     return {"device_id": device_id, "minutes": minutes, "points": points}
 
@@ -498,6 +508,14 @@ def ontology_page(request: Request):
 @app.get("/upload", response_class=HTMLResponse, include_in_schema=False)
 def upload_page(request: Request):
     return templates.TemplateResponse(request, "upload.html")
+
+
+@app.get("/dashboards", response_class=HTMLResponse, include_in_schema=False)
+def dashboards_page(request: Request):
+    """Зведений набір панелей (заміна Grafana) — використовує існуючі
+    /api/devices та /api/devices/{id}/history. Жодних додаткових бекенд-
+    залежностей не потрібно."""
+    return templates.TemplateResponse(request, "dashboards.html")
 
 
 # ─── Ontology / Upload proxies (UI lives here, processing in ontology_api) ────
